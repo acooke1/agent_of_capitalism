@@ -46,11 +46,15 @@ class GameLevel():
         """
         :param level: the integer corresponding to which level map we will be using
         """
-        self.level_map = levels[level][:][:] # These [:] indexing is used so that the level_map is a copy of the original, not a reference
-        # Should we convert the list into a numpy array?
-        self.num_coins_left = level_num_coins[level]
-        self.player_pos = [1,1] # Index corresponding to the player's current location in the map
+        self.level_num = level
+        self.reset_level()
 
+    def reset_level(self):
+        self.level_map = levels[self.level_num][:][:]
+        self.num_coins_left = level_num_coins[self.level_num]
+        self.player_pos = [1,1] # Index corresponding to the player's current location in the map
+        self.state_size = len(self.level_map) ** 2
+        self.step_num = 0
 
     def step(self, action):
         """
@@ -70,7 +74,8 @@ class GameLevel():
         """
         reward = 0
         done = False
-
+        self.step_num += 1 
+        #print('number of steps in epoch: ', self.step_num)
         goal_pos = self.player_pos[:] # Again, making a copy, not a reference
         if action==0:
             goal_pos[1] += -1 # move left
@@ -83,24 +88,35 @@ class GameLevel():
         # TODO Add code to this statement if we implement attacking!
 
         goal_pos_contents = self.level_map[goal_pos[0]][goal_pos[1]]
+        if goal_pos_contents == 0:
+            reward = 0.01
         if goal_pos_contents == 1: # moving into a wall
-            reward = -1 # TODO should we penalize running into walls?
+            reward = 0 # TODO should we penalize running into walls?
             goal_pos = self.player_pos[:] # The player can't move into a wall, so it stays stationary
         if goal_pos_contents == 2: # picking up a coin!
             self.num_coins_left -= 1
-            reward = 1
+            reward = .03
 
         if self.num_coins_left == 0:
-            reward = 10
+            reward = 1
             done = True
+        
+        if self.step_num == 120:
+            done = True
+
+        if done:
+            self.reset_level()
 
         # update player position
         self.level_map[self.player_pos[0]][self.player_pos[1]] = 0 # remove the player from the previous space in the map
         self.level_map[goal_pos[0]][goal_pos[1]] = 3 # add the player to the new space in the map
         self.player_pos = goal_pos[:]
 
+        #self.print_map()
+
         return [self.level_map, reward, done]
-    
+
+
     def print_map(self):
         """
         Method should print the currently-stored self.level_map to console
@@ -130,18 +146,19 @@ class GameLevel():
 # = = = = TEST CODE = = = =
 
 def main():
-    level = GameLevel(0)
-    level.print_map()
-    level.step(2)
-    level.print_map()
-    level.step(2)
-    level.print_map()
-    level.step(2)
-    level.print_map()
-    level.step(0)
-    level.print_map()
-    level.step(3)
-    level.print_map()
+    pass
+    # level = GameLevel(0)
+    # level.print_map()
+    # level.step(2)
+    # level.print_map()
+    # level.step(2)
+    # level.print_map()
+    # level.step(2)
+    # level.print_map()
+    # level.step(0)
+    # level.print_map()
+    # level.step(3)
+    # level.print_map()
 
 
 if __name__ == '__main__':
