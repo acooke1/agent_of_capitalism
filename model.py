@@ -18,7 +18,7 @@ class Reinforce(tf.keras.Model):
         """
         super(Reinforce, self).__init__()
         self.num_actions = num_actions
-        self.optimizer = tf.keras.optimizers.Adam(.001)
+        self.optimizer = tf.keras.optimizers.Adam(.00005)
         self.dense1 = tf.keras.layers.Dense(state_size, activation='relu')
         self.dense2 = tf.keras.layers.Dense(state_size, activation='relu')
         self.dense3 = tf.keras.layers.Dense(num_actions, activation='softmax')
@@ -70,8 +70,8 @@ class Reinforce(tf.keras.Model):
         probs = self.call(states)
         prob_for_actions = tf.gather_nd(probs, list(zip(np.arange(probs.shape[0]), actions)))
         log_prob_actions = tf.math.log(prob_for_actions)
-        print('shape of discounted rewards', discounted_rewards.shape)
-        print('episode length', states.shape[0])
+        #print('shape of discounted rewards', discounted_rewards.shape)
+        #print('episode length', states.shape[0])
         loss_actor = -tf.reduce_sum(log_prob_actions * discounted_rewards)
         
         #tf.stop_gradient(self.value_function(states))

@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import copy
 
 
 # NOTE FOR DEVELOPMENT: it's probably really bad practice to store this levels variable as a global variable
@@ -47,14 +48,21 @@ class GameLevel():
         :param level: the integer corresponding to which level map we will be using
         """
         self.level_num = level
+        self.level_map = levels[self.level_num].copy()
         self.reset_level()
 
     def reset_level(self):
-        self.level_map = levels[self.level_num][:][:]
-        self.num_coins_left = level_num_coins[self.level_num]
+        #print("before")
+        #self.print_map()
+        self.level_map = copy.deepcopy(levels[self.level_num])
+        #print("after")
+        #self.print_map()
+        self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
         self.player_pos = [1,1] # Index corresponding to the player's current location in the map
         self.state_size = len(self.level_map) ** 2
         self.step_num = 0
+        self.max_steps = self.state_size * 2
+
 
     def step(self, action):
         """
@@ -91,17 +99,17 @@ class GameLevel():
         if goal_pos_contents == 0:
             reward = 0.01
         if goal_pos_contents == 1: # moving into a wall
-            reward = 0 # TODO should we penalize running into walls?
+            reward = -0.01 # TODO should we penalize running into walls?
             goal_pos = self.player_pos[:] # The player can't move into a wall, so it stays stationary
         if goal_pos_contents == 2: # picking up a coin!
             self.num_coins_left -= 1
-            reward = .03
+            reward = 0.5
 
         if self.num_coins_left == 0:
             reward = 1
             done = True
         
-        if self.step_num == 120:
+        if self.step_num >= self.max_steps:
             done = True
 
         if done:

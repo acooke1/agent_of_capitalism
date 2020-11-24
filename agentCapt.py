@@ -46,7 +46,7 @@ def discount(rewards, discount_factor=.99):
         
 
 
-def generate_trajectory(env, model):
+def generate_trajectory(env, model, print_map=False):
     """
     Generates lists of states, actions, and rewards for one complete episode.
 
@@ -60,7 +60,12 @@ def generate_trajectory(env, model):
     state = env.level_map
     done = False
 
+
     while not done:
+
+        if print_map:
+            env.print_map()
+
         # TODO:
         # print('state shape', tf.expand_dims(state, axis = 0).shape)
         probs = model.call(tf.expand_dims(state, axis = 0))
@@ -129,12 +134,13 @@ def main():
 
     # TODO: 
     rewards = []
-    for i in range(250):
+    for i in range(50):
         episode_rewards = train(env, model)
-        print('episode rewards: ', episode_rewards)
+        print('episode: ', i, ', episode rewards: ', episode_rewards)
         rewards.append(np.sum(episode_rewards))
         # print('total episode rewards', episode_rewards)
-    print(np.mean(np.asarray(rewards[200:])))
+    generate_trajectory(env, model, True)
+    #print(np.mean(np.asarray(rewards[50:])))
     visualize_data(rewards)
     # 1) Train your model for 650 episodes, passing in the environment and the agent. 
     # 2) Append the total reward of the episode into a list keeping track of all of the rewards. 
