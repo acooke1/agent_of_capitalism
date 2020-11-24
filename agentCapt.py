@@ -4,6 +4,7 @@ from pylab import *
 import numpy as np
 import tensorflow as tf
 from model import Reinforce
+from new_model import ReinforceWithBaseline
 import game_level as gl
 
 
@@ -82,7 +83,6 @@ def generate_trajectory(env, model, print_map=False):
         #print('action', action)
         # 1) use model to generate probability distribution over next actions
         # 2) sample from this distribution to pick the next action
-
         states.append(state)
         actions.append(action)
         state, rwd, done = env.step(action)
@@ -131,6 +131,7 @@ def main():
     # Initialize model
     
     model = Reinforce(state_size, num_actions)
+    #model = ReinforceWithBaseline(state_size, num_actions)
 
     # TODO: 
     rewards = []
