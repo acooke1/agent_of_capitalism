@@ -2,11 +2,10 @@ import tensorflow as tf
 import numpy as np
 import game_level as gl
 
-
 class Reinforce(tf.keras.Model):
     def __init__(self, state_size, num_actions):
         """
-        The ReinforceWithBaseline class that inherits from tf.keras.Model.
+        The Reinforce class that inherits from tf.keras.Model.
 
         The forward pass calculates the policy for the agent given a batch of states. During training,
         ReinforceWithBaseLine estimates the value of each state to be used as a baseline to compare the policy's
@@ -18,9 +17,12 @@ class Reinforce(tf.keras.Model):
         """
         super(Reinforce, self).__init__()
         self.num_actions = num_actions
+        self.state_size = state_size
+
+        # Define actor network parameters, critic network parameters, and optimizer
         self.optimizer = tf.keras.optimizers.Adam(.00005)
-        self.dense1 = tf.keras.layers.Dense(state_size, activation='relu')
-        self.dense2 = tf.keras.layers.Dense(state_size, activation='relu')
+        self.dense1 = tf.keras.layers.Dense(self.state_size, activation='relu')
+        self.dense2 = tf.keras.layers.Dense(self.state_size, activation='relu')
         self.dense3 = tf.keras.layers.Dense(num_actions, activation='softmax')
 
 

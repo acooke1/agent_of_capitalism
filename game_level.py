@@ -48,8 +48,11 @@ class GameLevel():
         :param level: the integer corresponding to which level map we will be using
         """
         self.level_num = level
-        self.level_map = levels[self.level_num].copy()
+        self.level_map = [] # levels[self.level_num].copy()
+        self.player_pos = []
         self.reset_level()
+        self.state_size = len(self.level_map) ** 2
+        self.max_steps = self.state_size * 2
 
     def reset_level(self):
         #print("before")
@@ -59,9 +62,7 @@ class GameLevel():
         #self.print_map()
         self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
         self.player_pos = [1,1] # Index corresponding to the player's current location in the map
-        self.state_size = len(self.level_map) ** 2
         self.step_num = 0
-        self.max_steps = self.state_size * 2
 
 
     def step(self, action):
@@ -83,8 +84,9 @@ class GameLevel():
         reward = 0
         done = False
         self.step_num += 1 
-        #print('number of steps in epoch: ', self.step_num)
-        goal_pos = self.player_pos[:] # Again, making a copy, not a reference
+
+        # Determines where the model's next move will bring it
+        goal_pos = copy.deepcopy(self.player_pos)
         if action==0:
             goal_pos[1] += -1 # move left
         elif action==1:
@@ -95,32 +97,32 @@ class GameLevel():
             goal_pos[0] += 1 # move down
         # TODO Add code to this statement if we implement attacking!
 
+        # Move validation: also determines reward in this step
         goal_pos_contents = self.level_map[goal_pos[0]][goal_pos[1]]
-        if goal_pos_contents == 0:
+        if goal_pos_contents == 0: # moving into an empty space
             reward = 0.01
         if goal_pos_contents == 1: # moving into a wall
-            reward = -0.01 # TODO should we penalize running into walls?
-            goal_pos = self.player_pos[:] # The player can't move into a wall, so it stays stationary
+            reward = -0.01
+            goal_pos = self.player_pos # The player can't move into a wall, so it stays stationary
         if goal_pos_contents == 2: # picking up a coin!
             self.num_coins_left -= 1
             reward = 0.5
 
-        if self.num_coins_left == 0:
-            reward = 1
-            done = True
-        
-        if self.step_num >= self.max_steps:
-            done = True
-
-        if done:
-            self.reset_level()
-
-        # update player position
+        # Update player position
         self.level_map[self.player_pos[0]][self.player_pos[1]] = 0 # remove the player from the previous space in the map
         self.level_map[goal_pos[0]][goal_pos[1]] = 3 # add the player to the new space in the map
         self.player_pos = goal_pos[:]
 
-        #self.print_map()
+        # Episode ending conditions
+        if self.num_coins_left == 0:
+            reward = 1
+            done = True
+        if self.step_num >= self.max_steps:
+            done = True
+
+        # If episode is finished, reset level parameters for the start of the next episode
+        if done:
+            self.reset_level()
 
         return [self.level_map, reward, done]
 
@@ -142,6 +144,7 @@ class GameLevel():
         text_map = text_map.tolist()
         print(text_map)
         """
+        print("Step number " + str(self.step_num))
         num_to_char = [" ", "█", "❂", "☃"]
         side_length = len(self.level_map)
         for y in range(side_length):

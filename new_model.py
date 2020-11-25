@@ -22,7 +22,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.num_actions = num_actions
         self.state_size = state_size
 
-        # TODO: Define actor network parameters, critic network parameters, and optimizer
+        # Define actor network parameters, critic network parameters, and optimizer
         self.hidden_size = 64
         self.critic_hidden_size = 32
         self.input_layer = tf.keras.layers.Input(shape=(state_size,))
@@ -33,7 +33,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.critic_dense_layer1 = tf.keras.layers.Dense(self.critic_hidden_size, use_bias=True) 
         self.critic_dense_layer2 = tf.keras.layers.Dense(1, use_bias=True) 
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # TODO tweak this!
 
     def call(self, states):
         """
