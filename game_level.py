@@ -62,7 +62,7 @@ class GameLevel():
         # Reward values
         # TODO tweak these values
         self.empty_space_reward = 0.01
-        self.hit_wall_reward = -0.01
+        self.hit_wall_reward = -0.1
         self.get_coin_reward = 0.5
         self.get_all_coins_reward = 1.0
         self.slay_enemy_reward = 0.5
@@ -79,6 +79,7 @@ class GameLevel():
         #print("after")
         #self.print_map()
         self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
+        print(self.coinsLeft(2))
         self.player_pos = [1,1] # Index corresponding to the player's current location in the map
         self.step_num = 0
         if self.has_enemy:
@@ -87,6 +88,11 @@ class GameLevel():
             self.enemy_alive = True
             self.enemy_over_coin = True
 
+    def coinsLeft(self, coin_value):
+        total = 0
+        for i in range(len(self.level_map)):
+            total+=self.level_map[i].count(coin_value)
+        return total
 
     def step(self, action):
         """
@@ -107,6 +113,7 @@ class GameLevel():
         reward = 0
         done = False
         self.step_num += 1 
+        #print(self.level_map)
 
         # Determines where the model's next move will bring it
         """goal_pos = copy.deepcopy(self.player_pos)
