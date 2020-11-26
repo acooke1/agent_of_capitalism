@@ -100,14 +100,13 @@ def train(env, model):
     with tf.GradientTape() as tape:
         states, actions, rewards = generate_trajectory(env, model)
         discounted_rewards = discount(rewards)
-
         # Computes loss from the model and runs backpropagation
         episode_loss = model.loss(np.asarray(states), actions, discounted_rewards)
     gradients = tape.gradient(target = episode_loss, sources = model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     
     #print(rewards)
-    return tf.reduce_sum(rewards)
+    return tf.reduce_sum(rewards), len(rewards)
 
 
 def main():
@@ -115,7 +114,7 @@ def main():
     game_level = 0
     use_enemy = False
     allow_attacking = False
-    num_epochs = 600
+    num_epochs = 300
 
     # Initialize the game level
     env = gl.GameLevel(0, use_enemy)
@@ -134,13 +133,13 @@ def main():
     rewards = []
     # Train for num_epochs epochs
     for i in range(num_epochs):
-        episode_rewards = train(env, model)
-        print('Episode: ' + str(i) + ', episode rewards: ', episode_rewards)
+        episode_rewards, episode_length = train(env, model)
+        print('Episode: ' + str(i) +', episode length: ', episode_length, ', episode rewards: ', episode_rewards.numpy())
         rewards.append(np.sum(episode_rewards))
         # print('total episode rewards', episode_rewards)
     
     # Run the model once, printing its movements this time
-    generate_trajectory(env, model, True)
+    generate_trajectory(env, model)
     #print(np.mean(np.asarray(rewards[50:])))
     visualize_data(rewards)
 
