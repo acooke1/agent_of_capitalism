@@ -111,18 +111,28 @@ def train(env, model):
 
 
 def main():
+    # PARAMETERS FOR THIS TRAINING RUN
+    game_level = 0
+    use_enemy = False
+    allow_attacking = False
+    num_epochs = 600
 
-    env = gl.GameLevel(0)
+    # Initialize the game level
+    env = gl.GameLevel(0, use_enemy)
+
+    # PARAMETERS FOR THE MODEL
     state_size = env.state_size
-    num_actions = 4
+    if allow_attacking:
+        num_actions = 8
+    else:
+        num_actions = 4
 
     # Initialize model
     model = Reinforce(state_size, num_actions)
-    #model = ReinforceWithBaseline(state_size, num_actions)
+    # model = ReinforceWithBaseline(state_size, num_actions)
 
     rewards = []
     # Train for num_epochs epochs
-    num_epochs = 600
     for i in range(num_epochs):
         episode_rewards = train(env, model)
         print('Episode: ' + str(i) + ', episode rewards: ', episode_rewards)
