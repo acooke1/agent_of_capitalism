@@ -63,8 +63,8 @@ class GameLevel():
         # TODO tweak these values
         self.empty_space_reward = 0.01
         self.hit_wall_reward = -0.1
-        self.get_coin_reward = 0.5
-        self.get_all_coins_reward = 1.0
+        self.get_coin_reward = 1.0
+        self.get_all_coins_reward = 100.0
         self.slay_enemy_reward = 0.5
         self.get_hit_by_enemy_reward = -1.0
 

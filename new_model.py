@@ -33,7 +33,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.critic_dense_layer1 = tf.keras.layers.Dense(self.critic_hidden_size, use_bias=True) 
         self.critic_dense_layer2 = tf.keras.layers.Dense(1, use_bias=True) 
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # TODO tweak this!
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.00001) # TODO tweak this!
 
     def call(self, states):
         """

@@ -83,8 +83,9 @@ class PPOModel(tf.keras.Model):
         ratio = tf.exp(tf.math.log(action_probs + self.non_zero) - tf.math.log(old_action_probs + self.non_zero))
         clipped_ratio = tf.clip_by_value(ratio, clip_value_min=1 - self.epsilon, clip_value_max=1 + self.epsilon) * advantages
         actor_loss = -tf.reduce_mean(tf.minimum(tf.multiply(gaes, ratio), tf.multiply(gaes, clipped_ratio)))
-        print((self.GAMMA * next_state_values).shape, " ", values.shape)
-        critic_loss = tf.reduce_mean(tf.math.squared_difference(discounted_rewards + self.GAMMA * next_state_values, values))
+        #print((self.GAMMA * next_state_values).shape, " ", values.shape)
+        critic_loss = tf.reduce_mean(tf.math.squared_difference(discounted_rewards, values))
+        #critic_loss = tf.reduce_mean(tf.math.squared_difference(discounted_rewards + self.GAMMA * next_state_values, values))
         e = -tf.reduce_sum(newpolicy_probs * tf.math.log(tf.clip_by_value(newpolicy_probs, self.non_zero, 1)), axis=1)
         entropy = tf.reduce_mean(e, axis=0)
         loss = - (actor_loss - self.actor_discount * critic_loss + self.critic_discount * entropy)

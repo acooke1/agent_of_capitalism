@@ -130,6 +130,8 @@ def main():
         model = ReinforceWithBaseline(state_size, num_actions)
     elif sys.argv[1] == "PPO":
         model = PPOModel(state_size, num_actions)
+    else:
+        sys.exit(1)
     # model = ReinforceWithBaseline(state_size, num_actions)
 
     rewards = []
