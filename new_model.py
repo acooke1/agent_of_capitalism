@@ -103,5 +103,5 @@ class ReinforceWithBaseline(tf.keras.Model):
         critic_loss = tf.reduce_sum(tf.square(advantage))
         #import ipdb; ipdb.set_trace()
 
-        return actor_loss+critic_loss
+        return actor_loss+critic_loss, a_prob
 

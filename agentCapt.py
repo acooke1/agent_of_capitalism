@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 from model import Reinforce
 from new_model import ReinforceWithBaseline
+from ppo_model import PPOModel
 import game_level as gl
 
 
@@ -24,7 +25,6 @@ def visualize_data(total_rewards):
     title('Reward by Episode')
     grid(True)
     show()
-
 
 def discount(rewards, discount_factor=.99):
     """
@@ -68,26 +68,20 @@ def generate_trajectory(env, model, print_map=False):
         # Calls the model to generate probability distribution for next possible actions
         probs = model.call(tf.expand_dims(state, axis = 0))        
         probs = tf.cast(probs, tf.float64)
-        #print('probabilities: ', probs)
-        #print('virgin probs', probs)
 
         # Randomly samples from the distribution to determine the next action
         action = np.random.choice([0, 1, 2, 3], 1, True, p=probs[0]/tf.reduce_sum(probs[0]))[0]
-
-        #print('normalized probabilities', probs[0]/tf.reduce_sum(probs))
-        #print('action', action)
 
         # Stores the chosen state, action, and reward for the step, and calls the GameLevel to get the next state
         states.append(state)
         actions.append(action)
         state, rwd, done = env.step(action)
         rewards.append(rwd)
-        #print('reward', rwd)
         
     return states, actions, rewards
 
 
-def train(env, model):
+def train(env, model, previous_actions, old_probs, model_type):
     """
     This function trains the model for one episode.
 
@@ -101,12 +95,15 @@ def train(env, model):
         states, actions, rewards = generate_trajectory(env, model)
         discounted_rewards = discount(rewards)
         # Computes loss from the model and runs backpropagation
-        episode_loss = model.loss(np.asarray(states), actions, discounted_rewards)
+        if (model_type == "PPO"):
+            episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards, previous_actions, old_probs)
+        else:
+            episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards)
     gradients = tape.gradient(target = episode_loss, sources = model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     
     #print(rewards)
-    return tf.reduce_sum(rewards), len(rewards)
+    return tf.reduce_sum(rewards), len(rewards), old_probs, actions
 
 
 def main():
@@ -127,13 +124,20 @@ def main():
         num_actions = 4
 
     # Initialize model
-    model = Reinforce(state_size, num_actions)
+    if sys.argv[1] == "REINFORCE":
+        model = Reinforce(state_size, num_actions) 
+    elif sys.argv[1] == "REINFORCE_BASELINE":
+        model = ReinforceWithBaseline(state_size, num_actions)
+    elif sys.argv[1] == "PPO":
+        model = PPOModel(state_size, num_actions)
     # model = ReinforceWithBaseline(state_size, num_actions)
 
     rewards = []
+    previous_actions = []
+    old_probs = tf.Variable(np.zeros((128,4)), dtype=tf.float32)
     # Train for num_epochs epochs
     for i in range(num_epochs):
-        episode_rewards, episode_length = train(env, model)
+        episode_rewards, episode_length, old_probs, previous_actions = train(env, model, previous_actions, old_probs, sys.argv[1])
         print('Episode: ' + str(i) +', episode length: ', episode_length, ', episode rewards: ', episode_rewards.numpy())
         rewards.append(np.sum(episode_rewards))
         # print('total episode rewards', episode_rewards)

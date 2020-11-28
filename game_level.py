@@ -79,7 +79,7 @@ class GameLevel():
         #print("after")
         #self.print_map()
         self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
-        print(self.coinsLeft(2))
+        #print(self.coinsLeft(2))
         self.player_pos = [1,1] # Index corresponding to the player's current location in the map
         self.step_num = 0
         if self.has_enemy:
