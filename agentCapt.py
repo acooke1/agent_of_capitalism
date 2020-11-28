@@ -114,7 +114,7 @@ def main():
     num_epochs = 300
 
     # Initialize the game level
-    env = gl.GameLevel(0, use_enemy)
+    env = gl.GameLevel(game_level, use_enemy)
 
     # PARAMETERS FOR THE MODEL
     state_size = env.state_size
@@ -145,7 +145,7 @@ def main():
         # print('total episode rewards', episode_rewards)
     
     # Run the model once, printing its movements this time
-    generate_trajectory(env, model)
+    generate_trajectory(env, model, True)
     #print(np.mean(np.asarray(rewards[50:])))
     visualize_data(rewards)
 
