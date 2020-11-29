@@ -20,7 +20,7 @@ class Reinforce(tf.keras.Model):
         self.state_size = state_size
 
         # Define actor network parameters, critic network parameters, and optimizer
-        self.optimizer = tf.keras.optimizers.Adam(.00005)
+        self.optimizer = tf.keras.optimizers.Adam(.005)
         self.dense1 = tf.keras.layers.Dense(self.state_size, activation='relu')
         self.dense2 = tf.keras.layers.Dense(self.state_size, activation='relu')
         self.dense3 = tf.keras.layers.Dense(num_actions, activation='softmax')

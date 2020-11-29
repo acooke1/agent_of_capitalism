@@ -61,16 +61,16 @@ class GameLevel():
 
         # Reward values
         # TODO tweak these values
-        self.empty_space_reward = 0.01
-        self.hit_wall_reward = -0.1
-        self.get_coin_reward = 0.5
-        self.get_all_coins_reward = 1.0
+        self.empty_space_reward = 0
+        self.hit_wall_reward = 0
+        self.get_coin_reward = .5
+        self.get_all_coins_reward = 10
         self.slay_enemy_reward = 0.5
         self.get_hit_by_enemy_reward = -1.0
 
         self.reset_level()
         self.state_size = len(self.level_map) ** 2
-        self.max_steps = self.state_size * 2
+        self.max_steps = 2*self.state_size
 
     def reset_level(self):
         #print("before")
@@ -79,7 +79,6 @@ class GameLevel():
         #print("after")
         #self.print_map()
         self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
-        print(self.coinsLeft(2))
         self.player_pos = [1,1] # Index corresponding to the player's current location in the map
         self.step_num = 0
         if self.has_enemy:

@@ -6,6 +6,7 @@ import tensorflow as tf
 from model import Reinforce
 from new_model import ReinforceWithBaseline
 import game_level as gl
+import glob
 
 
 def visualize_data(total_rewards):
@@ -127,8 +128,8 @@ def main():
         num_actions = 4
 
     # Initialize model
-    model = Reinforce(state_size, num_actions)
-    # model = ReinforceWithBaseline(state_size, num_actions)
+    #model = Reinforce(state_size, num_actions)
+    model = ReinforceWithBaseline(state_size, num_actions)
 
     rewards = []
     # Train for num_epochs epochs
