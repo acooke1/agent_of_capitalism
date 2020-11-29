@@ -41,9 +41,7 @@ class Reinforce(tf.keras.Model):
         for each state in the episode
         """
         # TODO: implement this!
-        states = np.asarray(states)
-        flattened_states = np.asarray(list(map(lambda x: x.flatten(), states)))
-        output = self.dense1(flattened_states)
+        output = self.dense1(states)
         output = self.dense2(output)
         output = self.dense3(output)
         

@@ -47,9 +47,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         for each state in the episode
         """
         # TODO: implement this!
-        states = np.asarray(states)
-        flattened_states = np.asarray(list(map(lambda x: x.flatten(), states)))
-        dense_layer1 = self.act_dense_layer1(flattened_states)
+        dense_layer1 = self.act_dense_layer1(states)
         dense_layer1 = tf.nn.relu(dense_layer1)
         dense_layer2 = self.act_dense_layer2(dense_layer1)
         probabilites = tf.nn.softmax(dense_layer2)
@@ -66,9 +64,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         :return: A [episode_length] matrix representing the value of each state.
         """
         # TODO: implement this :D
-        states = np.asarray(states)
-        flattened_states = np.asarray(list(map(lambda x: x.flatten(), states)))
-        dense_layer1 = self.critic_dense_layer1(flattened_states)
+        dense_layer1 = self.critic_dense_layer1(states)
         dense_layer1 = tf.nn.relu(dense_layer1)
         values = self.critic_dense_layer2(dense_layer1)
 

@@ -36,8 +36,8 @@ class QLearning(tf.keras.Model):
         states = []
         actions = []
         rewards = []
-        state = env.level_map
-        state = list(np.asarray(state).flatten()).index(.1)
+        state = env.reset()
+        state = list(state).index(env.player_level_val)
         done = False
         #print(env.level_map)
         #print(self.E)
@@ -61,7 +61,7 @@ class QLearning(tf.keras.Model):
             states.append(state)
             actions.append(action)
             state, rwd, done = env.step(action)
-            state = list(np.asarray(state).flatten()).index(.1)
+            state = list(state).index(env.player_level_val)
             total_rwd += rwd
             rewards.append(rwd)
             self.Q[states[-1]][action] = (1-self.alpha) * self.Q[states[-1]][action] + self.alpha * (rwd + self.gamma * self.V[state])
