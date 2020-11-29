@@ -76,7 +76,7 @@ class QLearning(tf.keras.Model):
 
 def main():
     E = 1000
-    env = gl.GameLevel(0, False)
+    env = gl.GameLevel(1, False)
     map_length = len(env.level_map)
     model = QLearning((map_length, map_length), 1000, .99, .2, 4)
     total_rwds = []
@@ -84,7 +84,7 @@ def main():
         model.E = model.epsilon/(model.epsilon + i)
         total_rwd_epoch = model.generate_trajectories(env)
         total_rwds.append(total_rwd_epoch)
-        print('epoch rewards: ', total_rwd_epoch)
+        print('epoch: ', i, 'epoch rewards: ', total_rwd_epoch)
     print('avg rewards over last 50:', np.mean(total_rwds[7000:]))
     ac.visualize_data(total_rwds)
 
