@@ -60,9 +60,6 @@ def generate_trajectory(env, model, print_map=False):
     done = False
 
     while not done:
-
-        if print_map:
-            env.print_map()
         # print('state shape', tf.expand_dims(state, axis = 0).shape)
 
         # Calls the model to generate probability distribution for next possible actions
@@ -77,6 +74,13 @@ def generate_trajectory(env, model, print_map=False):
         actions.append(action)
         state, rwd, done = env.step(action)
         rewards.append(rwd)
+
+        if print_map:
+            env.print_map()
+            int_to_action = ["LEFT", "UP", "RIGHT", "DOWN"]
+            print("Action probabilities: ", probs)
+            print("Action taken: " + int_to_action[action])
+            print("Reward: " + str(rwd))
         
     return states, actions, rewards
 
@@ -108,10 +112,10 @@ def train(env, model, previous_actions, old_probs, model_type):
 
 def main():
     # PARAMETERS FOR THIS TRAINING RUN
-    game_level = 0
+    game_level = 1
     use_enemy = False
     allow_attacking = False
-    num_epochs = 300
+    num_epochs = 100
 
     # Initialize the game level
     env = gl.GameLevel(game_level, use_enemy)
@@ -131,7 +135,8 @@ def main():
     elif sys.argv[1] == "PPO":
         model = PPOModel(state_size, num_actions)
     else:
-        sys.exit(1)
+        print("INCORRECT CALL. CALL SHOULD BE OF FORMAT: python assignment.py REINFORCE/REINFORCE_BASELINE/PPO")
+        exit()
     # model = ReinforceWithBaseline(state_size, num_actions)
 
     rewards = []
