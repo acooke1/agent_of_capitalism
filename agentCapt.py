@@ -78,7 +78,7 @@ def generate_trajectory(env, model, print_map=False):
 
         if print_map:
             env.print_map()
-            int_to_action = ["LEFT", "UP", "RIGHT", "DOWN"]
+            int_to_action = ["LEFT", "UP", "RIGHT", "DOWN", "ATTACK LEFT", "ATTACK UP", "ATTACK RIGHT", "ATTACK DOWN"]
             print("Action probabilities: ", probs)
             print("Action taken: " + int_to_action[action])
             print("Reward: " + str(rwd))
