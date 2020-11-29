@@ -226,7 +226,12 @@ class GameLevel():
         if done:
             self.reset_level()
 
-        return [self.level_map, reward, done]
+        flattened = np.array(self.level_map).flatten()
+        #print(flattened.shape)
+        return [flattened, reward, done]
+
+    def reset(self):
+        return np.array(self.level_map).flatten()
 
     def num_steps_to_coin(self, input_pos):
         """

@@ -57,7 +57,7 @@ def generate_trajectory(env, model, print_map=False):
     states = []
     actions = []
     rewards = []
-    state = env.level_map
+    state = env.reset()
     done = False
 
     while not done:
@@ -108,7 +108,7 @@ def train(env, model, previous_actions, old_probs, model_type):
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     
     #print(rewards)
-    return tf.reduce_sum(rewards), len(rewards), old_probs, actions
+    return tf.reduce_sum(rewards), len(rewards), old_probs, actions, episode_loss
 
 
 def main():
@@ -142,11 +142,11 @@ def main():
 
     rewards = []
     previous_actions = []
-    old_probs = tf.Variable(np.zeros((128,4)), dtype=tf.float32)
+    old_probs = tf.Variable(np.zeros((1,model.num_actions)) + 0.25, dtype=tf.float32)
     # Train for num_epochs epochs
     for i in range(num_epochs):
-        episode_rewards, episode_length, old_probs, previous_actions = train(env, model, previous_actions, old_probs, sys.argv[1])
-        print('Episode: ' + str(i) +', episode length: ', episode_length, ', episode rewards: ', episode_rewards.numpy())
+        episode_rewards, episode_length, old_probs, previous_actions, episode_loss = train(env, model, previous_actions, old_probs, sys.argv[1])
+        print('Episode: ' + str(i) +', episode length: ', episode_length, ', episode rewards: ', episode_rewards.numpy(), ', episode loss: ', episode_loss.numpy())
         rewards.append(np.sum(episode_rewards))
         # print('total episode rewards', episode_rewards)
     
