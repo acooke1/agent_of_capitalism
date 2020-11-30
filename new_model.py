@@ -21,6 +21,9 @@ class ReinforceWithBaseline(tf.keras.Model):
         super(ReinforceWithBaseline, self).__init__()
         self.num_actions = num_actions
         self.state_size = state_size
+        
+        self.actor_discount = 1.0
+        self.critic_discount = 1.0
 
         # Define actor network parameters, critic network parameters, and optimizer
         self.hidden_size = 64
@@ -91,13 +94,17 @@ class ReinforceWithBaseline(tf.keras.Model):
         """
         # TODO: implement this :)
         # Hint: use tf.gather_nd (https://www.tensorflow.org/api_docs/python/tf/gather_nd) to get the probabilities of the actions taken by the model
-        a_prob = self.call(states)
-        indices = tf.range(0, tf.shape(a_prob)[0]) * self.num_actions + actions
-        P_a = tf.gather(tf.reshape(a_prob, [-1]), indices)
         advantage = discounted_rewards - tf.squeeze(self.value_function(states))
-        actor_loss = -tf.reduce_sum(tf.math.log(P_a) * tf.stop_gradient(advantage))
-        critic_loss = tf.reduce_sum(tf.square(advantage))
-        #import ipdb; ipdb.set_trace()
+        probs = self.call(states)
 
-        return actor_loss+critic_loss, a_prob
+        actor_log = -1 * tf.math.log(tf.gather_nd(probs, list(zip(np.arange(len(actions)), actions))))
+        actor_loss = tf.stop_gradient(advantage) * actor_log
+        actor_loss = self.actor_discount * actor_loss
+
+        critic_loss = advantage * advantage
+        critic_loss = self.critic_discount * critic_loss
+
+        loss = tf.reduce_sum(tf.reshape(actor_loss + critic_loss, (-1, 1)))
+
+        return loss, probs
 

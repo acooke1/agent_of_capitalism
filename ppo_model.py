@@ -20,11 +20,11 @@ class PPOModel(tf.keras.Model):
         self.num_actions = num_actions
 
         self.epsilon = 0.2
-        self.learning_rate = 4e-7
+        self.learning_rate = 2e-4
         self.GAMMA = 0.99
         self.LAMBDA = 0.95
         self.critic_discount = 0.5
-        self.actor_discount = 1
+        self.actor_discount = 1.0
         self.entropy_beta = 0.001
         self.non_zero = 1e-10
 
@@ -80,9 +80,11 @@ class PPOModel(tf.keras.Model):
         p2 = tf.clip_by_value(ratio, 1 - self.epsilon, 1 + self.epsilon) * advantages
         actor_loss = -tf.reduce_mean(tf.minimum(p1, p2))
         critic_loss = tf.reduce_mean(tf.math.squared_difference(discounted_rewards, values))
-        loss = self.critic_discount * critic_loss + actor_loss - self.entropy_beta * tf.reduce_mean(
-            -(newpolicy_probs * tf.math.log(newpolicy_probs + 1e-10)))
-        print(newpolicy_probs)
+        e = -tf.reduce_sum(newpolicy_probs * tf.math.log(tf.clip_by_value(newpolicy_probs, self.non_zero, 1)), axis=1)
+        entropy = tf.reduce_mean(e, axis=0)
+        #entropy = tf.reduce_mean(-(newpolicy_probs * tf.math.log(newpolicy_probs + 1e-10)))
+        loss = self.critic_discount * critic_loss + self.actor_discount * actor_loss - self.entropy_beta * entropy
+        #loss = - (actor_loss - self.constant_2 * critic_loss + self.constant_1 * entropy)
         return loss, newpolicy_probs
 
         
