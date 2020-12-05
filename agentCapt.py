@@ -102,7 +102,7 @@ def train(env, model, previous_actions, old_probs, model_type):
         discounted_rewards = discount(rewards)
         # Computes loss from the model and runs backpropagation
         if (model_type == "PPO"):
-            episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards, previous_actions, old_probs)
+            episode_loss, old_probs = model.loss(np.asarray(states), actions, rewards, previous_actions, old_probs)
         else:
             episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards)
     gradients = tape.gradient(target = episode_loss, sources = model.trainable_variables)
