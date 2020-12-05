@@ -52,6 +52,7 @@ def generate_trajectory(env, model, print_map=False):
 
     :param env: The GameLevel
     :param model: The model used to generate the actions
+    :param print_map: A boolean corresponding to whether or not to print the game level after taking the step
     :returns: A tuple of lists (states, actions, rewards), where each list has length equal to the number of timesteps in the episode
     """
     states = []
@@ -101,7 +102,7 @@ def train(env, model, previous_actions, old_probs, model_type):
         discounted_rewards = discount(rewards)
         # Computes loss from the model and runs backpropagation
         if (model_type == "PPO"):
-            episode_loss, old_probs = model.loss(np.asarray(states), actions, rewards, previous_actions, old_probs)
+            episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards, previous_actions, old_probs)
         else:
             episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards)
     gradients = tape.gradient(target = episode_loss, sources = model.trainable_variables)
@@ -114,15 +115,20 @@ def train(env, model, previous_actions, old_probs, model_type):
 def main():
     # PARAMETERS FOR THIS TRAINING RUN
     game_level = 0
+    use_submap = True
     use_enemy = False
     allow_attacking = False
-    num_epochs = 450
+    num_epochs = 100
 
     # Initialize the game level
-    env = gl.GameLevel(game_level, use_enemy)
+    env = gl.GameLevel(game_level, use_enemy, use_submap)
 
     # PARAMETERS FOR THE MODEL
-    state_size = env.state_size
+    if use_submap:
+        state_size = env.submap_dims**2
+    else:
+        state_size = env.level_area
+
     if allow_attacking:
         num_actions = 8
     else:
@@ -151,7 +157,7 @@ def main():
         # print('total episode rewards', episode_rewards)
     
     # Run the model once, printing its movements this time
-    generate_trajectory(env, model, False)
+    generate_trajectory(env, model, print_map=True)
     #print(np.mean(np.asarray(rewards[50:])))
     visualize_data(rewards)
 
