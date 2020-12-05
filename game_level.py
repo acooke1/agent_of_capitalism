@@ -207,7 +207,7 @@ class GameLevel():
             direc_comparisons = [x_difference<0, y_difference<0, x_difference>0, y_difference>0]
 
             for direc in range(self.num_direcs):
-                pos_contents = self.level_map[self.enemy_pos[0]+self.coord_adds[direc][0]][self.player_pos[1]+self.coord_adds[direc][1]]
+                pos_contents = self.level_map[self.enemy_pos[0]+self.coord_adds[direc][0]][self.enemy_pos[1]+self.coord_adds[direc][1]]
                 if pos_contents == self.wall_level_val: # That's a wall
                     direction_probs[direc] += self.enemy_running_into_wall_factor
                 elif direc_comparisons[direc]: # The player is in this direction
