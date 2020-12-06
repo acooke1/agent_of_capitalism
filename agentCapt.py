@@ -120,8 +120,16 @@ def main():
     allow_attacking = False
     num_epochs = 100
 
+    # PARAMETERS FOR RANDOM MAP GENERATION
+    use_random_maps = False
+    side_length = 16 # Generally, values between 8 and 16 are good
+    wall_prop = 0.3 # This is the fraction of empty spaces that become walls. Generally, values between 0.25 and 0.35 are good
+    num_coins = 12
+    starting_pos = [1,1] # Setting this to [1,1] is standard (top-left corner), but if you wanted, you could set it to [4,5], or other starting positions
+
     # Initialize the game level
-    env = gl.GameLevel(game_level, use_enemy, use_submap)
+    env = gl.GameLevel(game_level, use_enemy, use_submap, use_random_maps, side_length, wall_prop, num_coins, starting_pos)
+    # NOTE: all parameters after game_level are entirely optional, just passed here so that the setting options above work properly
 
     # PARAMETERS FOR THE MODEL
     if use_submap:
