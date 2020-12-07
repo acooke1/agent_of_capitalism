@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import copy
+import random
 
 
 # NOTE FOR DEVELOPMENT: it's probably really bad practice to store this levels variable as a global variable
@@ -71,23 +72,13 @@ level_num_coins = [8, 11, 7, 13]
 
 
 class GameLevel():
-    def __init__(self, level, has_enemy=False):
+    def __init__(self, level, has_enemy=False, use_submap=False, use_random_maps=False, side_length=16, wall_prop=0.3, num_coins=12, starting_pos=[1,1]):
         """
         :param level: the integer corresponding to which level map we will be using
         :param has_enemy: boolean corresponding to whether or not an enemy will be used; defaults to False
+        :param use_submap: boolean corresponding to whether or not the level should return the whole level map
+            or just a self.submap_dims square submap centered on the player when step() is called
         """
-        self.level_num = level
-        self.level_map = [] # levels[self.level_num].copy()
-        self.player_pos = []
-        self.has_enemy = has_enemy
-        self.enemy_alive = False
-
-        # General usage constants
-        self.num_direcs = 4
-        self.coord_adds = [[0,-1], [-1,0], [0,1], [1,0]]
-        self.enemy_running_into_wall_factor = 0.9 # Higher values means less likely it will run into a wall
-        self.enemy_pursuing_player_factor = 0.5 # Higher values means greater weight on pursuing the player
-
         # What walls/coins/etc. look like, to the model
         # DO NOT CHANGE, or else the model just won't work
         self.empty_level_val = 0.0 # DO NOT CHANGE
@@ -96,33 +87,64 @@ class GameLevel():
         self.player_level_val = 0.1 # DO NOT CHANGE
         self.enemy_level_val = -1.0 # DO NOT CHANGE
 
+        # Store the game initialization parameters
+        self.level_num = level
+        self.use_submap = use_submap
+        self.use_random_maps = use_random_maps
+        self.level_map = [] # levels[self.level_num].copy()
+        self.player_pos = [] # of the format [y, x]
+        self.has_enemy = has_enemy
+        self.enemy_alive = False
+
+        # Store level generation parameters (ONLY IF USING RANDOMLY GENERATED MAPS)
+        self.side_length=side_length
+        self.wall_prop=wall_prop
+        self.num_coins=num_coins
+        self.starting_pos=starting_pos
+
+        self.reset_level()
+
+        # General usage constants
+        self.num_direcs = 4
+        self.coord_adds = [[0,-1], [-1,0], [0,1], [1,0]]
+        self.enemy_running_into_wall_factor = 0.9 # Higher values means less likely it will run into a wall
+        self.enemy_pursuing_player_factor = 5.0 # Higher values means greater weight on pursuing the player
+        self.submap_dims = 5
+        self.level_area = len(self.level_map) ** 2
+        self.max_steps = 2*self.level_area
+
         # Reward values
         # TODO tweak these values
-        self.empty_space_reward = 0
+        self.empty_space_reward = 0 # NOTE: CURRENTLY NOT IN USE--SEE LINE 162 FOR HOW REWARD FOR EMPTY SPACES IS CALCULATED
         self.hit_wall_reward = 0
         self.get_coin_reward = .5
         self.get_all_coins_reward = .5
         self.slay_enemy_reward = 0.5
         self.get_hit_by_enemy_reward = -1.0
 
-        self.reset_level()
-        self.state_size = len(self.level_map) ** 2
-        self.max_steps = 2*self.state_size
 
     def reset_level(self):
-        self.level_map = copy.deepcopy(levels[self.level_num])
-        self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
-        self.player_pos = [1,1] # Index corresponding to the player's current location in the map
-        # TODO TESTING STARTING IN THE MIDDLE
-        # self.player_pos = [len(self.level_map)//2, len(self.level_map)//2] # Uncomment here if you want to go back to starting in the middle
-        
-        self.level_map[self.player_pos[0]][self.player_pos[1]] = self.player_level_val
+        # Reinitialize the map
+        if not self.use_random_maps:
+            self.level_map = copy.deepcopy(levels[self.level_num])
+            self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
+        else:
+            self.level_map = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos)
+            self.num_coins_left = copy.deepcopy(self.num_coins)
+
+        # Reset step num and player position to starting position
         self.step_num = 0
+        self.player_pos = copy.deepcopy(self.starting_pos)
+        
+        # Add the player to the map
+        self.level_map[self.player_pos[0]][self.player_pos[1]] = self.player_level_val
+
+        # Reset any necessary enemy variables
         if self.has_enemy:
             self.enemy_pos = [len(self.level_map)-2, len(self.level_map)-2]
-            self.level_map[self.enemy_pos[0]][self.enemy_pos[1]] = self.enemy_level_val
             self.enemy_alive = True
-            self.enemy_over_coin = True
+            self.enemy_over_coin = (self.level_map[self.enemy_pos[0]][self.enemy_pos[1]]==self.coin_level_val)
+            self.level_map[self.enemy_pos[0]][self.enemy_pos[1]] = self.enemy_level_val
 
     """
     def coinsLeft(self, coin_value):
@@ -131,6 +153,7 @@ class GameLevel():
             total+=self.level_map[i].count(coin_value)
         return total
     """
+
 
     def step(self, action):
         """
@@ -180,6 +203,7 @@ class GameLevel():
             if goal_pos_contents == self.enemy_level_val: # running into the enemy
                 reward = self.get_hit_by_enemy_reward
                 done = True
+                print("END CONDITION: hit by enemy")
 
             # Update player position
             self.level_map[self.player_pos[0]][self.player_pos[1]] = 0 # remove the player from the previous space in the map
@@ -207,7 +231,7 @@ class GameLevel():
             direc_comparisons = [x_difference<0, y_difference<0, x_difference>0, y_difference>0]
 
             for direc in range(self.num_direcs):
-                pos_contents = self.level_map[self.enemy_pos[0]+self.coord_adds[direc][0]][self.player_pos[1]+self.coord_adds[direc][1]]
+                pos_contents = self.level_map[self.enemy_pos[0]+self.coord_adds[direc][0]][self.enemy_pos[1]+self.coord_adds[direc][1]]
                 if pos_contents == self.wall_level_val: # That's a wall
                     direction_probs[direc] += self.enemy_running_into_wall_factor
                 elif direc_comparisons[direc]: # The player is in this direction
@@ -231,6 +255,7 @@ class GameLevel():
             if enemy_goal_pos_contents == self.player_level_val: # hitting the player
                 reward = self.get_hit_by_enemy_reward
                 done = True
+                print("END CONDITION: hit by enemy")
             
             # Update enemy position
             # Remove the enemy from the previous space in the map
@@ -243,23 +268,55 @@ class GameLevel():
             self.level_map[enemy_goal_pos[0]][enemy_goal_pos[1]] = self.enemy_level_val # add the enemy to the new space in the map
             self.enemy_pos = enemy_goal_pos[:]
 
-        # Other episode ending conditions
+        # Non-enemy-related episode ending conditions
         if self.num_coins_left == 0:
             reward = self.get_all_coins_reward
             done = True
+            print("END CONDITION: got all coins!")
         if self.step_num >= self.max_steps:
             done = True
+            print("END CONDITION: ran out of time")
+
+        return_map = self.level_map
+        if self.use_submap:
+            return_map = self.create_submap()
+            # Test that it's rendering correctly
+            """print("SUBMAP")
+            self.print_map(return_map)"""
+        flattened_map = np.array(return_map).flatten()
+        #print(flattened.shape)
 
         # If episode is finished, reset level parameters for the start of the next episode
         if done:
             self.reset_level()
 
-        flattened = np.array(self.level_map).flatten()
-        #print(flattened.shape)
-        return [flattened, reward, done]
+        return [flattened_map, reward, done]
+
 
     def reset(self):
-        return np.array(self.level_map).flatten()
+        return_map = self.level_map
+        if self.use_submap:
+            return_map = self.create_submap()
+        
+        return np.array(return_map).flatten()
+
+
+    def create_submap(self):
+        """
+        Returns a square two-dimensional array with shape self.submap_dims by self.submap_dims,
+        which is a subsection of self.level_map, specifically centered on the player's current location.
+        Any spaces beyond the edges of the board are filled in by walls.
+        """
+        return_map = [[0.0 for x in range(self.submap_dims)] for y in range(self.submap_dims)]
+        half_dims = self.submap_dims//2
+        for y in range(self.submap_dims):
+            y_coord = min(max(self.player_pos[0]-half_dims+y, 0), len(self.level_map)-1)
+            for x in range(self.submap_dims):
+                x_coord = min(max(self.player_pos[1]-half_dims+x, 0), len(self.level_map)-1)
+                return_map[y][x] = self.level_map[y_coord][x_coord]
+
+        return return_map
+
 
     def num_steps_to_coin(self, input_pos):
         """
@@ -275,7 +332,7 @@ class GameLevel():
         open_spaces = []
         open_spaces.append(input_pos)
         distances[input_pos[0]][input_pos[1]] = 0
-        min_dist = self.state_size + 1
+        min_dist = self.level_area + 1
 
         while len(open_spaces)>0:
             """for i in range(8):
@@ -307,18 +364,121 @@ class GameLevel():
         return None
 
 
-    def print_map(self):
+    def procedurally_generate(self, side_length, wall_prop, num_coins, starting_pos=[1,1]):
+        """
+        Method creates a two-dimensional list of shape [side_length, side_length] that contains walls and num_coins coins
+        :param side_length: An integer, usually between 8 and 16
+        :param wall_prop: A float from 0.0 to 1.0 corresponding to the fraction of spaces within the level that should be walls
+            Generally, 0.27 is a safe setting
+        :param num_coins: An integer, usually around 8 to 10
+        :param starting_pos: A length-two list of integers, indicating the position in the map at which the player should start
+        :returns: two-dimensional list as described above
+        """
+        accessible = False
+        num_generations = 0
+        gen_map = []
+
+        while not accessible:
+            num_generations+=1
+            # Create the basic empty level with walls around the outside
+            gen_map = []
+            gen_map.append([])
+            for x in range(side_length):
+                gen_map[0].append(self.wall_level_val)
+            for y in range(1, side_length-1):
+                gen_map.append([self.wall_level_val])
+                for x in range(side_length-2):
+                    gen_map[y].append(self.empty_level_val)
+                gen_map[y].append(self.wall_level_val)
+            gen_map.append([])
+            for x in range(side_length):
+                gen_map[side_length-1].append(self.wall_level_val)
+
+            # Add player placeholder
+            gen_map[starting_pos[0]][starting_pos[1]] = self.player_level_val
+
+            # Add some walls
+            # (Note: counting the walls in all the example maps, while excluding the external walls, 
+            # and then dividing by the squared internal area 6x6 for an 8x8 map, 14x14 for a 16x16 map,
+            # we get a proportion of around 0.27 oor 0.28)
+            num_walls = int(wall_prop*((side_length-2)**2))
+            for i in range(num_walls):
+                # Find a random open location
+                wall_x = random.randint(1,side_length-2)
+                wall_y = random.randint(1,side_length-2)
+                while not gen_map[wall_y][wall_x]==self.empty_level_val:
+                    wall_x = random.randint(1,side_length-2)
+                    wall_y = random.randint(1,side_length-2)
+
+                # Add the wall to the map
+                gen_map[wall_y][wall_x] = self.wall_level_val
+
+            # Add some coins
+            for i in range(num_coins):
+                # Find a random open location
+                coin_x = random.randint(1,side_length-2)
+                coin_y = random.randint(1,side_length-2)
+                while not gen_map[coin_y][coin_x]==self.empty_level_val:
+                    coin_x = random.randint(1,side_length-2)
+                    coin_y = random.randint(1,side_length-2)
+
+                # Add the coin to the map
+                gen_map[coin_y][coin_x] = self.coin_level_val
+
+            # Remove player placeholder
+            gen_map[starting_pos[0]][starting_pos[1]] = self.empty_level_val
+
+            # print("MAP GENERATION " + str(num_generations))
+            # self.print_map(gen_map)
+
+            # Now, check if all the coins are accessible
+            unvisited = [[True for x in range(side_length)] for y in range(side_length)] 
+            open_spaces = []
+            open_spaces.append(starting_pos)
+            unvisited[starting_pos[0]][starting_pos[1]] = False
+            num_coins_found = 0
+
+            # Loop through all available paths
+            while len(open_spaces)>0:
+                cur_pos = open_spaces.pop(0)
+                # Loop through the adjacent spaces
+                for direc in range(self.num_direcs):
+                    new_pos = [cur_pos[0]+self.coord_adds[direc][0],cur_pos[1]+self.coord_adds[direc][1]]
+
+                    if unvisited[new_pos[0]][new_pos[1]]:
+                        pos_contents = gen_map[new_pos[0]][new_pos[1]]
+
+                        if pos_contents == self.coin_level_val:
+                            num_coins_found += 1
+                        
+                        if not pos_contents == self.wall_level_val:
+                            open_spaces.append(new_pos)
+                            unvisited[new_pos[0]][new_pos[1]] = False
+
+            # print("Looping through the map found " + str(num_coins_found) + " coins")
+            # Test to see if all the coins are accessible
+            accessible = (num_coins_found==num_coins)
+
+        self.print_map(gen_map)
+        print(str(num_generations) + " MAPS GENERATED TO GET AN ACCESSIBLE MAP")
+        return gen_map, num_generations
+
+    def print_map(self, map_to_print=[]):
         """
         Method should print the currently-stored self.level_map to console
+        :param map_to_print: A nxn array of float values corresponding to a map that should be printed
         :returns: None
         """
+        if len(map_to_print)==0:
+            map_to_print = self.level_map
+
         print("Step number " + str(self.step_num))
         num_to_char = [" ", "█", "❂", "♀", "☿"] # Want to go back to the snowman? He's here → ☃
-        side_length = len(self.level_map)
+        side_length = len(map_to_print)
         for y in range(side_length):
             print_string = ""
             for x in range(side_length):
-                space_contents = self.level_map[y][x]
+                space_contents = map_to_print[y][x]
                 if space_contents == self.empty_level_val:
                     char_to_add = num_to_char[0]
                 elif space_contents == self.wall_level_val:
@@ -336,25 +496,37 @@ class GameLevel():
 # = = = = TEST CODE = = = =
 """
 def main():
-    level = GameLevel(0)
-    level.print_map()
+    level = GameLevel(0, has_enemy=False, use_submap=True)
+
+    # TEST PARAMETERS
+    side_length = 16
+    num_coins = 12
+    wall_prop = 0.3
+
+    num_generations = []
+    for i in range(100):
+        genned_map, num_gens = level.procedurally_generate(side_length=side_length, wall_prop=wall_prop, num_coins=num_coins)
+        num_generations.append(num_gens)
+    print("Side length " + str(side_length) + "; wall prop " + str(wall_prop) + "; num coins " + str(num_coins) + ": " + str(sum(num_generations)/len(num_generations)) + " maps need to be generated on average")
+
+    # COMMENT OUT ABOVE CODE TO GET THE TEST MOVEMENTS IN THE MAP
+    level.print_map(map_to_print=level.create_submap())
     print("Distance to coin: " + str(level.num_steps_to_coin(level.player_pos)))
     level.step(2)
-    level.print_map()
+    level.print_map(map_to_print=level.create_submap())
     print("Distance to coin: " + str(level.num_steps_to_coin(level.player_pos)))
     level.step(2)
-    level.print_map()
+    level.print_map(map_to_print=level.create_submap())
     print("Distance to coin: " + str(level.num_steps_to_coin(level.player_pos)))
     level.step(2)
-    level.print_map()
+    level.print_map(map_to_print=level.create_submap())
     print("Distance to coin: " + str(level.num_steps_to_coin(level.player_pos)))
     level.step(0)
-    level.print_map()
+    level.print_map(map_to_print=level.create_submap())
     print("Distance to coin: " + str(level.num_steps_to_coin(level.player_pos)))
     level.step(3)
-    level.print_map()
+    level.print_map(map_to_print=level.create_submap())
     print("Distance to coin: " + str(level.num_steps_to_coin(level.player_pos)))
-
 
 if __name__ == '__main__':
     main()

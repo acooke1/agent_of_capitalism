@@ -52,6 +52,7 @@ def generate_trajectory(env, model, print_map=False):
 
     :param env: The GameLevel
     :param model: The model used to generate the actions
+    :param print_map: A boolean corresponding to whether or not to print the game level after taking the step
     :returns: A tuple of lists (states, actions, rewards), where each list has length equal to the number of timesteps in the episode
     """
     states = []
@@ -78,7 +79,7 @@ def generate_trajectory(env, model, print_map=False):
 
         if print_map:
             env.print_map()
-            int_to_action = ["LEFT", "UP", "RIGHT", "DOWN"]
+            int_to_action = ["LEFT", "UP", "RIGHT", "DOWN", "ATTACK LEFT", "ATTACK UP", "ATTACK RIGHT", "ATTACK DOWN"]
             print("Action probabilities: ", probs)
             print("Action taken: " + int_to_action[action])
             print("Reward: " + str(rwd))
@@ -101,7 +102,7 @@ def train(env, model, previous_actions, old_probs, model_type):
         discounted_rewards = discount(rewards)
         # Computes loss from the model and runs backpropagation
         if (model_type == "PPO"):
-            episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards, previous_actions, old_probs)
+            episode_loss, old_probs = model.loss(np.asarray(states), actions, rewards, previous_actions, old_probs)
         else:
             episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards)
     gradients = tape.gradient(target = episode_loss, sources = model.trainable_variables)
@@ -113,16 +114,29 @@ def train(env, model, previous_actions, old_probs, model_type):
 
 def main():
     # PARAMETERS FOR THIS TRAINING RUN
-    game_level = 1
+    game_level = 0
+    use_submap = True
     use_enemy = False
     allow_attacking = False
     num_epochs = 100
 
+    # PARAMETERS FOR RANDOM MAP GENERATION
+    use_random_maps = False
+    side_length = 16 # Generally, values between 8 and 16 are good
+    wall_prop = 0.3 # This is the fraction of empty spaces that become walls. Generally, values between 0.25 and 0.35 are good
+    num_coins = 12
+    starting_pos = [1,1] # Setting this to [1,1] is standard (top-left corner), but if you wanted, you could set it to [4,5], or other starting positions
+
     # Initialize the game level
-    env = gl.GameLevel(game_level, use_enemy)
+    env = gl.GameLevel(game_level, use_enemy, use_submap, use_random_maps, side_length, wall_prop, num_coins, starting_pos)
+    # NOTE: all parameters after game_level are entirely optional, just passed here so that the setting options above work properly
 
     # PARAMETERS FOR THE MODEL
-    state_size = env.state_size
+    if use_submap:
+        state_size = env.submap_dims**2
+    else:
+        state_size = env.level_area
+
     if allow_attacking:
         num_actions = 8
     else:
@@ -151,7 +165,7 @@ def main():
         # print('total episode rewards', episode_rewards)
     
     # Run the model once, printing its movements this time
-    generate_trajectory(env, model, True)
+    generate_trajectory(env, model, print_map=True)
     #print(np.mean(np.asarray(rewards[50:])))
     visualize_data(rewards)
 
