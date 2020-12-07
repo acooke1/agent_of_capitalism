@@ -101,7 +101,7 @@ class GameLevel():
         self.empty_space_reward = 0
         self.hit_wall_reward = 0
         self.get_coin_reward = .5
-        self.get_all_coins_reward = 10
+        self.get_all_coins_reward = .5
         self.slay_enemy_reward = 0.5
         self.get_hit_by_enemy_reward = -1.0
 
