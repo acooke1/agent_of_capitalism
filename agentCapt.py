@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 from model import Reinforce
 from new_model import ReinforceWithBaseline
+from conv_model import ConvReinforceWithBaseline
 from ppo_model import PPOModel
 import game_level as gl
 import glob
@@ -61,6 +62,8 @@ def generate_trajectory(env, model, print_map=False):
     state = env.reset()
     done = False
 
+    # num_wall_collisions = 0
+
     while not done:
         # print('state shape', tf.expand_dims(state, axis = 0).shape)
 
@@ -77,13 +80,20 @@ def generate_trajectory(env, model, print_map=False):
         state, rwd, done = env.step(action)
         rewards.append(rwd)
 
+        """if rwd==-0.1:
+            num_wall_collisions+=1"""
+
         if print_map:
             env.print_map()
             int_to_action = ["LEFT", "UP", "RIGHT", "DOWN", "ATTACK LEFT", "ATTACK UP", "ATTACK RIGHT", "ATTACK DOWN"]
             print("Action probabilities: ", probs)
             print("Action taken: " + int_to_action[action])
             print("Reward: " + str(rwd))
+            print()
         
+    """if num_wall_collisions>1:
+        print("NUM WALL COLLISIONS: " + str(num_wall_collisions))"""
+
     return states, actions, rewards
 
 
@@ -121,14 +131,15 @@ def main():
     num_epochs = 100
 
     # PARAMETERS FOR RANDOM MAP GENERATION
-    use_random_maps = False
-    side_length = 16 # Generally, values between 8 and 16 are good
+    use_random_maps = True # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
+    side_length = 8 # Generally, values between 8 and 16 are good
     wall_prop = 0.3 # This is the fraction of empty spaces that become walls. Generally, values between 0.25 and 0.35 are good
-    num_coins = 12
+    num_coins = 8
     starting_pos = [1,1] # Setting this to [1,1] is standard (top-left corner), but if you wanted, you could set it to [4,5], or other starting positions
+    use_random_starts = True
 
     # Initialize the game level
-    env = gl.GameLevel(game_level, use_enemy, use_submap, use_random_maps, side_length, wall_prop, num_coins, starting_pos)
+    env = gl.GameLevel(game_level, use_enemy, use_submap, use_random_maps, side_length, wall_prop, num_coins, starting_pos, use_random_starts)
     # NOTE: all parameters after game_level are entirely optional, just passed here so that the setting options above work properly
 
     # PARAMETERS FOR THE MODEL
@@ -147,6 +158,8 @@ def main():
         model = Reinforce(state_size, num_actions) 
     elif sys.argv[1] == "REINFORCE_BASELINE":
         model = ReinforceWithBaseline(state_size, num_actions)
+    elif sys.argv[1] == "REINFORCE_CONV":
+        model = ConvReinforceWithBaseline(state_size, num_actions)
     elif sys.argv[1] == "PPO":
         model = PPOModel(state_size, num_actions)
     else:
