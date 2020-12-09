@@ -5,7 +5,6 @@ import numpy as np
 import tensorflow as tf
 from model import Reinforce
 from new_model import ReinforceWithBaseline
-from conv_model import ConvReinforceWithBaseline
 from ppo_model import PPOModel
 import game_level as gl
 import glob
@@ -158,8 +157,8 @@ def main():
         model = Reinforce(state_size, num_actions) 
     elif sys.argv[1] == "REINFORCE_BASELINE":
         model = ReinforceWithBaseline(state_size, num_actions)
-    elif sys.argv[1] == "REINFORCE_CONV":
-        model = ConvReinforceWithBaseline(state_size, num_actions)
+    """elif sys.argv[1] == "REINFORCE_CONV":
+        model = ConvReinforceWithBaseline(state_size, num_actions)"""
     elif sys.argv[1] == "PPO":
         model = PPOModel(state_size, num_actions)
     else:
