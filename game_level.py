@@ -102,7 +102,7 @@ class GameLevel():
         self.num_coins=num_coins
         self.starting_pos=starting_pos
 
-        self.reset_level()
+        
 
         # General usage constants
         self.num_direcs = 4
@@ -118,23 +118,27 @@ class GameLevel():
         self.empty_space_reward = 0 # NOTE: CURRENTLY NOT IN USE--SEE LINE 162 FOR HOW REWARD FOR EMPTY SPACES IS CALCULATED
         self.hit_wall_reward = 0
         self.get_coin_reward = 0.5
-        self.get_all_coins_reward = 10
+        self.get_all_coins_reward = 0
         self.slay_enemy_reward = 0.5
         self.get_hit_by_enemy_reward = -1.0
+
+        self.reset_level()
 
 
     def reset_level(self):
         # Reinitialize the map
-        if not self.use_random_maps:
-            self.level_map = copy.deepcopy(levels[self.level_num])
-            self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
-        else:
-            self.level_map = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos)
-            self.num_coins_left = copy.deepcopy(self.num_coins)
+        
 
         # Reset step num and player position to starting position
         self.step_num = 0
         self.player_pos = copy.deepcopy(self.starting_pos)
+
+        if not self.use_random_maps:
+            self.level_map = copy.deepcopy(levels[self.level_num])
+            self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
+        else:
+            self.level_map = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos)[0]
+            self.num_coins_left = copy.deepcopy(self.num_coins)
         
         # Add the player to the map
         self.level_map[self.player_pos[0]][self.player_pos[1]] = self.player_level_val

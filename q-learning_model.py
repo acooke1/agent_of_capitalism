@@ -44,7 +44,7 @@ class QLearning(tf.keras.Model):
         while not done:
             # print('state shape', tf.expand_dims(state, axis = 0).shape)
             # Calls the model to generate probability distribution for next possible actions
-            if np.random.rand(1) < .2:
+            if np.random.rand(1) < .6:
                 action = np.random.randint(0,4)
             else:
                 action = np.argmax(self.Q[state])
@@ -76,9 +76,10 @@ class QLearning(tf.keras.Model):
 
 def main():
     E = 1000
-    env = gl.GameLevel(2, False)
+    env = gl.GameLevel(level =0, use_submap=False, use_random_maps=True)
+    # env = gl.GameLevel(level =0, use_submap= F)
     map_length = len(env.level_map)
-    model = QLearning((map_length, map_length), 1000, .99, .2, 4)
+    model = QLearning((map_length, map_length), E, .99, .2, 4)
     total_rwds = []
     for i in range(5000):
         print('curr epoch: ', i+1)
