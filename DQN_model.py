@@ -29,7 +29,6 @@ class QModel(tf.keras.Model):
 
 		self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate) 
 
-		#self.q_values = self.q_values(states)
 
 	def advantage(self, states):
 		
@@ -94,7 +93,7 @@ def generate_trajectory(env, model, print_map=False):
 	:param print_map: A boolean corresponding to whether or not to print the game level after taking the step
 	:returns: A tuple of lists (states, actions, rewards), where each list has length equal to the number of timesteps in the episode
 	"""
-	epsilon = 0.01
+	epsilon = 0.5 #0.01
 	gamma = 0.99
 	states = []
 	actions = []
@@ -102,6 +101,10 @@ def generate_trajectory(env, model, print_map=False):
 	target_qs = []
 	state = env.reset()
 	done = False
+	replay_buffer = []
+	max_replay_buffer_size = 100
+
+	initialize_replay_buffer(replay_buffer, 50, env, model)
 
 	while not done:
 		# print('state shape', tf.expand_dims(state, axis = 0).shape)
@@ -117,6 +120,10 @@ def generate_trajectory(env, model, print_map=False):
 		actions.append(action)
 		state, rwd, done = env.step(action)
 		rewards.append(rwd)
+
+		if len(replay_buffer) == max_replay_buffer_size:
+			replay_buffer.pop(0)
+		replay_buffer.append(np.array([action, rwd, done]))
 
 		next_Qs = model.q_values(state)
 		target_qs = Qs.numpy()
@@ -137,6 +144,16 @@ def generate_trajectory(env, model, print_map=False):
 			print("Reward: " + str(rwd))
 		
 	return states, actions, rewards, Qs, target_qs
+
+
+def initialize_replay_buffer(replay_buffer, init_size, env, model):
+	state = env.reset()
+	for i in range(init_size):
+		action = np.random.choice(model.num_actions)
+		next_state, reward, done = env.step(action)
+		replay_buffer.append(np.array([action, reward, done]))
+		if done:
+			state = env.reset()
 
 
 def train(env, model, previous_actions, old_probs):
@@ -165,7 +182,7 @@ def train(env, model, previous_actions, old_probs):
 def main():
 	# PARAMETERS FOR THIS TRAINING RUN
 	game_level = 0
-	use_submap = True
+	use_submap = False
 	use_enemy = False
 	allow_attacking = False
 	num_epochs = 100
