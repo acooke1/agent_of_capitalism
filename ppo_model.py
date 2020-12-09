@@ -75,7 +75,15 @@ class PPOModel(tf.keras.Model):
         zero = np.zeros((1,1))
         next_state_values = np.append(values.numpy(), zero, axis=0)
         advantages, deltas = get_gaes(discounted_rewards, values, next_state_values)
-        ratio = tf.math.exp(tf.math.log(newpolicy_probs + 1e-10) - tf.math.log(oldpolicy_probs + 1e-10))
+        shape_dif = newpolicy_probs.shape[0] - oldpolicy_probs.shape[0]
+        correction = np.zeros((abs(shape_dif), self.num_actions))
+        newpolicy_probs_fixed = newpolicy_probs
+        oldpolicy_probs_fixed = oldpolicy_probs
+        #if (shape_dif < 0):
+        #    newpolicy_probs_fixed = tf.concat([newpolicy_probs_fixed, correction], axis=0)
+        #elif (shape_dif > 0):
+        #    oldpolicy_probs_fixed = tf.concat([oldpolicy_probs_fixed, correction], axis=0)
+        ratio = tf.math.exp(tf.math.log(newpolicy_probs_fixed + 1e-10) - tf.math.log(oldpolicy_probs_fixed + 1e-10))
         p1 = ratio * advantages
         p2 = tf.clip_by_value(ratio, 1 - self.epsilon, 1 + self.epsilon) * advantages
         actor_loss = -tf.reduce_mean(tf.minimum(p1, p2))
