@@ -25,10 +25,10 @@ class QLearning(tf.keras.Model):
         self.epsilon = epsilon
         self.gamma = gamma
         self.alpha = alpha
-        self.E = 0
+        self.E = epsilon
 
     
-    def generate_trajectories(self, env):
+    def generate_trajectories(self, env, E):
         # num_visits tracks the number of times each (s,a) pair is seen throughout the episodes. Used 
         # to generate T and R after running n_games episodes
         total_rwd = 0
@@ -39,12 +39,14 @@ class QLearning(tf.keras.Model):
         state = env.reset()
         state = list(state).index(env.player_level_val)
         done = False
+        coins_left = 0
         #print(env.level_map)
         #print(self.E)
         while not done:
+            coins_left = env.num_coins_left
             # print('state shape', tf.expand_dims(state, axis = 0).shape)
             # Calls the model to generate probability distribution for next possible actions
-            if np.random.rand(1) < .6:
+            if np.random.rand(1) < E:
                 action = np.random.randint(0,4)
             else:
                 action = np.argmax(self.Q[state])
@@ -71,20 +73,23 @@ class QLearning(tf.keras.Model):
         
         # print('states: ', states)
         # print('rewards: ', rewards)
-            
+        print('coins left: ', coins_left)
         return np.sum(rewards)
 
 def main():
     E = 1000
-    env = gl.GameLevel(level =0, use_submap=False, use_random_maps=True)
+    env = gl.GameLevel(level =0, use_submap=False, use_random_maps=False)
     # env = gl.GameLevel(level =0, use_submap= F)
     map_length = len(env.level_map)
     model = QLearning((map_length, map_length), E, .99, .2, 4)
     total_rwds = []
+    E = .5
     for i in range(5000):
+        if i > 3500:
+            E = .5
         print('curr epoch: ', i+1)
         model.E = model.epsilon/(model.epsilon + i)
-        total_rwd_epoch = model.generate_trajectories(env)
+        total_rwd_epoch = model.generate_trajectories(env, E)
         total_rwds.append(total_rwd_epoch)
         print('epoch rewards: ', total_rwd_epoch)
     print('avg rewards over last 50:', np.mean(total_rwds[4500:]))

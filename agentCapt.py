@@ -157,8 +157,8 @@ def main():
         model = Reinforce(state_size, num_actions) 
     elif sys.argv[1] == "REINFORCE_BASELINE":
         model = ReinforceWithBaseline(state_size, num_actions)
-    """elif sys.argv[1] == "REINFORCE_CONV":
-        model = ConvReinforceWithBaseline(state_size, num_actions)"""
+    # """elif sys.argv[1] == "REINFORCE_CONV":
+    #     model = ConvReinforceWithBaseline(state_size, num_actions)"""
     elif sys.argv[1] == "PPO":
         model = PPOModel(state_size, num_actions)
     else:
