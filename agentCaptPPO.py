@@ -5,10 +5,22 @@ import numpy as np
 import tensorflow as tf
 from model import Reinforce
 from new_model import ReinforceWithBaseline
-from ppo_model import PPOModel
+from ppo_model2 import PPOModel
 import game_level as gl
 import glob
 
+
+def get_gaes(values, masks, rewards, lmbda=0.95, gamma=0.99):
+    returns = []
+    gae = 0
+    for i in reversed(range(len(rewards))):
+        #print(rewards[i], " ", gamma, " ", values[i+1], " ", masks[i], " ", values[i])
+        delta = rewards[i] + gamma * values[i + 1] * masks[i] - values[i]
+        gae = delta + gamma * lmbda * masks[i] * gae
+        returns.insert(0, gae + values[i])
+
+    adv = np.array(returns) - values[:-1]
+    return returns, (adv - np.mean(adv)) / (np.std(adv) + 1e-10)
 
 def visualize_data(total_rewards):
     """
@@ -55,32 +67,43 @@ def generate_trajectory(env, model, print_map=False):
     :param print_map: A boolean corresponding to whether or not to print the game level after taking the step
     :returns: A tuple of lists (states, actions, rewards), where each list has length equal to the number of timesteps in the episode
     """
+    actions_probs = []
+    values = []
     states = []
     actions = []
     rewards = []
+    masks = []
+    actions_onehot = []
     state = env.reset()
     done = False
-
-    # num_wall_collisions = 0
 
     while not done:
         # print('state shape', tf.expand_dims(state, axis = 0).shape)
 
         # Calls the model to generate probability distribution for next possible actions
-        probs = model.call(tf.expand_dims(state, axis = 0))        
+        probs = model.call(tf.expand_dims(state, axis = 0))     
         probs = tf.cast(probs, tf.float64)
+
+        q_value = np.array(model.value_function(tf.expand_dims(state, axis = 0)))
+        #q_value = np.astype(q_value, np.float64)
 
         # Randomly samples from the distribution to determine the next action
         action = np.random.choice([0, 1, 2, 3], 1, True, p=probs[0]/tf.reduce_sum(probs[0]))[0]
 
         # Stores the chosen state, action, and reward for the step, and calls the GameLevel to get the next state
+        
+        action_onehot = np.zeros(4)
+        action_onehot[action] = 1
+
         states.append(state)
         actions.append(action)
+        actions_onehot.append(action_onehot)
         state, rwd, done = env.step(action)
+        mask = not done
+        masks.append(mask)
         rewards.append(rwd)
-
-        """if rwd==-0.1:
-            num_wall_collisions+=1"""
+        values.append(q_value)
+        actions_probs.append(probs)
 
         if print_map:
             env.print_map()
@@ -88,15 +111,15 @@ def generate_trajectory(env, model, print_map=False):
             print("Action probabilities: ", probs)
             print("Action taken: " + int_to_action[action])
             print("Reward: " + str(rwd))
-            print()
+
+    q_value = np.array(model.value_function(tf.expand_dims(state, axis = 0)))
+    #q_value = np.astype(q_value, np.float64)
+    values.append(q_value)
         
-    """if num_wall_collisions>1:
-        print("NUM WALL COLLISIONS: " + str(num_wall_collisions))"""
-
-    return states, actions, rewards
+    return states, actions, rewards, values, actions_probs, actions_onehot, masks
 
 
-def train(env, model, previous_actions, old_probs, model_type):
+def train(env, model):
     """
     This function trains the model for one episode.
 
@@ -107,18 +130,18 @@ def train(env, model, previous_actions, old_probs, model_type):
 
     # Uses generate trajectory to run an episode and get states, actions, and rewards.
     with tf.GradientTape() as tape:
-        states, actions, rewards = generate_trajectory(env, model)
-        discounted_rewards = discount(rewards)
+        states, actions, rewards, values, actions_probs, actions_onehot, masks = generate_trajectory(env, model)
+        #print(values)
+        #print(masks)
+        #print(rewards)
+        deltas, advantages = get_gaes(values, masks, rewards)
         # Computes loss from the model and runs backpropagation
-        if (model_type == "PPO"):
-            episode_loss, old_probs = model.loss(np.asarray(states), actions, rewards, previous_actions, old_probs)
-        else:
-            episode_loss, old_probs = model.loss(np.asarray(states), actions, discounted_rewards)
+        episode_loss = model.loss(np.asarray(states), actions, rewards, actions_probs, advantages)
     gradients = tape.gradient(target = episode_loss, sources = model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     
     #print(rewards)
-    return tf.reduce_sum(rewards), len(rewards), old_probs, actions, episode_loss
+    return tf.reduce_sum(rewards), len(rewards), episode_loss
 
 
 def main():
@@ -127,18 +150,17 @@ def main():
     use_submap = True
     use_enemy = False
     allow_attacking = False
-    num_epochs = 100
+    num_epochs = 1000
 
     # PARAMETERS FOR RANDOM MAP GENERATION
-    use_random_maps = True # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
-    side_length = 8 # Generally, values between 8 and 16 are good
+    use_random_maps = False
+    side_length = 16 # Generally, values between 8 and 16 are good
     wall_prop = 0.3 # This is the fraction of empty spaces that become walls. Generally, values between 0.25 and 0.35 are good
-    num_coins = 8
+    num_coins = 12
     starting_pos = [1,1] # Setting this to [1,1] is standard (top-left corner), but if you wanted, you could set it to [4,5], or other starting positions
-    use_random_starts = True
 
     # Initialize the game level
-    env = gl.GameLevel(game_level, use_enemy, use_submap, use_random_maps, side_length, wall_prop, num_coins, starting_pos, use_random_starts)
+    env = gl.GameLevel(game_level, use_enemy, use_submap, use_random_maps, side_length, wall_prop, num_coins, starting_pos)
     # NOTE: all parameters after game_level are entirely optional, just passed here so that the setting options above work properly
 
     # PARAMETERS FOR THE MODEL
@@ -153,25 +175,14 @@ def main():
         num_actions = 4
 
     # Initialize model
-    if sys.argv[1] == "REINFORCE":
-        model = Reinforce(state_size, num_actions) 
-    elif sys.argv[1] == "REINFORCE_BASELINE":
-        model = ReinforceWithBaseline(state_size, num_actions)
-    """elif sys.argv[1] == "REINFORCE_CONV":
-        model = ConvReinforceWithBaseline(state_size, num_actions)"""
-    elif sys.argv[1] == "PPO":
-        model = PPOModel(state_size, num_actions)
-    else:
-        print("INCORRECT CALL. CALL SHOULD BE OF FORMAT: python assignment.py REINFORCE/REINFORCE_BASELINE/PPO")
-        exit()
+    model = PPOModel(state_size, num_actions)
+
     # model = ReinforceWithBaseline(state_size, num_actions)
 
     rewards = []
-    previous_actions = []
-    old_probs = tf.Variable(np.zeros((1,model.num_actions)) + 0.25, dtype=tf.float32)
     # Train for num_epochs epochs
     for i in range(num_epochs):
-        episode_rewards, episode_length, old_probs, previous_actions, episode_loss = train(env, model, previous_actions, old_probs, sys.argv[1])
+        episode_rewards, episode_length, episode_loss = train(env, model)
         print('Episode: ' + str(i) +', episode length: ', episode_length, ', episode rewards: ', episode_rewards.numpy(), ', episode loss: ', episode_loss.numpy())
         rewards.append(np.sum(episode_rewards))
         # print('total episode rewards', episode_rewards)
