@@ -106,8 +106,8 @@ def train(env, model, previous_actions, old_probs, model_type):
     """
 
     # Uses generate trajectory to run an episode and get states, actions, and rewards.
+    states, actions, rewards = generate_trajectory(env, model)
     with tf.GradientTape() as tape:
-        states, actions, rewards = generate_trajectory(env, model)
         discounted_rewards = discount(rewards)
         # Computes loss from the model and runs backpropagation
         if (model_type == "PPO"):
@@ -130,7 +130,7 @@ def main():
     num_epochs = 100
 
     # PARAMETERS FOR RANDOM MAP GENERATION
-    use_random_maps = True # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
+    use_random_maps = False # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
     side_length = 8 # Generally, values between 8 and 16 are good
     wall_prop = 0.3 # This is the fraction of empty spaces that become walls. Generally, values between 0.25 and 0.35 are good
     num_coins = 8
@@ -157,8 +157,6 @@ def main():
         model = Reinforce(state_size, num_actions) 
     elif sys.argv[1] == "REINFORCE_BASELINE":
         model = ReinforceWithBaseline(state_size, num_actions)
-    # """elif sys.argv[1] == "REINFORCE_CONV":
-    #     model = ConvReinforceWithBaseline(state_size, num_actions)"""
     elif sys.argv[1] == "PPO":
         model = PPOModel(state_size, num_actions)
     else:

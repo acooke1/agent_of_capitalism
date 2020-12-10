@@ -134,9 +134,9 @@ class GameLevel():
         # Reward values
         # TODO tweak these values
         self.empty_space_reward = 0 # NOTE: CURRENTLY NOT IN USE--SEE LINE 162 FOR HOW REWARD FOR EMPTY SPACES IS CALCULATED
-        self.hit_wall_reward = -.1
-        self.get_coin_reward = 0.5
-        self.get_all_coins_reward = 0
+        self.hit_wall_reward = -.2
+        self.get_coin_reward = 1.0
+        self.get_all_coins_reward = 10
         self.slay_enemy_reward = 0.5
         self.get_hit_by_enemy_reward = -1.0
         
@@ -317,7 +317,7 @@ class GameLevel():
             print("END CONDITION: got all coins!")
         if self.step_num >= self.max_steps:
             done = True
-            print("END CONDITION: ran out of time")
+            #print("END CONDITION: ran out of time", self.step_num)
 
         return_map = self.level_map
         if self.use_submap:

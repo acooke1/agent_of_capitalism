@@ -228,7 +228,7 @@ def main():
     generate_trajectory(env, model, print_map=False)
     #print(np.mean(np.asarray(rewards[50:])))
     visualize_data(rewards)
-    plot(frame_idx, test_rewards)
+    plot(frames_, test_rewards)
 
 
 if __name__ == '__main__':
