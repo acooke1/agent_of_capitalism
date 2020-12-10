@@ -72,7 +72,7 @@ level_num_coins = [8, 11, 7, 13]
 
 
 class GameLevel():
-    def __init__(self, level, has_enemy=False, use_submap=False, use_random_maps=False, side_length=16, wall_prop=0.3, num_coins=12, starting_pos=[1,1], use_random_starts=True):
+    def __init__(self, level, has_enemy=False, use_submap=False, use_random_maps=False, side_length=16, wall_prop=0.3, num_coins=12, starting_pos=[1,1], use_random_starts=True, use_random_seed=False):
         """
         :param level: the integer corresponding to which level map we will be using
         :param has_enemy: boolean corresponding to whether or not an enemy will be used; defaults to False
@@ -81,6 +81,7 @@ class GameLevel():
         :param use_random_maps: boolean corresponding to whether the level should generate a new random map every time it is reset
             If True, the procedural generation uses the following parameters below
         :params side_length, wall_prop, num_coins, starting_pos, random_starting_pos: all to be passed to procedurally_generate()
+        :params use_random_seed: used for testing random maps, but the same random map everytime.
         """
         # What walls/coins/etc. look like, to the model
         # DO NOT CHANGE, or else the model just won't work
@@ -99,18 +100,27 @@ class GameLevel():
         self.player_pos = [] # of the format [y, x]
         self.has_enemy = has_enemy
         self.enemy_alive = False
+        self.use_random_seed = use_random_seed
 
         # Store level generation parameters (ONLY IF USING RANDOMLY GENERATED MAPS)
-        self.side_length = side_length
-        self.wall_prop = wall_prop
-        self.num_coins = num_coins
-        self.starting_pos = starting_pos
+        self.side_length=side_length
+        self.wall_prop=wall_prop
+        self.num_coins=num_coins
+        self.starting_pos=starting_pos
+
+        
 
         # General usage constants
         self.num_direcs = 4
         self.coord_adds = [[0,-1], [-1,0], [0,1], [1,0]]
         self.level_area = self.side_length ** 2 # TEMPORARY, GETS RESET BELOW
         self.step_num = 0
+
+        self.seeded_map = []
+        self.seeded_coins_left = 0
+
+        if use_random_seed:
+            self.setMapSeed()
 
         self.reset_level()
 
@@ -129,24 +139,29 @@ class GameLevel():
         self.get_all_coins_reward = 0
         self.slay_enemy_reward = 0.5
         self.get_hit_by_enemy_reward = -1.0
-
-        self.reset_level()
+        
+    
+    def setMapSeed(self):
+        self.seeded_map = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos)[0]
+        self.seeded_coins_left = copy.deepcopy(self.num_coins)
 
 
     def reset_level(self):
         # Reinitialize the map
-        
+        if not self.use_random_maps:
+            if self.use_random_seed:
+                self.level_map = copy.deepcopy(self.seeded_map)
+                self.num_coins_left = copy.deepcopy(self.seeded_coins_left)
+            else: 
+                self.level_map = copy.deepcopy(levels[self.level_num])
+                self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
+        else:
+            self.level_map = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos)[0]
+            self.num_coins_left = copy.deepcopy(self.num_coins)
+
         # Reset step num and player position to starting position
         self.step_num = 0
         self.player_pos = copy.deepcopy(self.starting_pos)
-
-        temp_enemy_pos = []
-        if not self.use_random_maps:
-            self.level_map = copy.deepcopy(levels[self.level_num])
-            self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
-        else:
-            self.level_map, num_generations, self.starting_pos, temp_enemy_pos = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos, self.use_random_starts)
-            self.num_coins_left = copy.deepcopy(self.num_coins)
         
         # Add the player to the map
         self.level_map[self.player_pos[0]][self.player_pos[1]] = self.player_level_val
@@ -582,8 +597,9 @@ def main():
     num_coins = 12
     starting_pos = [1,1] # Setting this to [1,1] is standard (top-left corner), but if you wanted, you could set it to [4,5], or other starting positions
     use_random_starts = True
+    use_random_seed = False
 
-    level = GameLevel(game_level, use_enemy, use_submap, use_random_maps, side_length, wall_prop, num_coins, starting_pos, use_random_starts)
+    level = GameLevel(game_level, use_enemy, use_submap, use_random_maps, side_length, wall_prop, num_coins, starting_pos, use_random_starts, use_random_seed)
     # level.print_map()
 
     # TEST PARAMETERS FOR MASS GENERATION
