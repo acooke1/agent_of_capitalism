@@ -17,7 +17,7 @@ class QModel(tf.keras.Model):
 
 		self.advantage_hidden_size = 64
 		self.value_hidden_size = 32
-		self.learning_rate = 0.001 #2.5e-4
+		self.learning_rate = 0.001 
 
 		self.input_layer = tf.keras.layers.Input(shape=(state_size,))
 
@@ -60,10 +60,6 @@ class QModel(tf.keras.Model):
 
 	def loss(self, q_values, target_qs):
 
-		#q_values = self.q_values(states)
-		#import ipdb; ipdb.set_trace()
-		
-		#return tf.reduce_sum(tf.square(target_qs - tf.reduce_sum(tf.gather(q_values, actions), axis=1)))
 		return tf.reduce_sum(tf.square(q_values - target_qs))
 
 def visualize_data(total_rewards):
@@ -93,7 +89,7 @@ def generate_trajectory(env, model, print_map=False):
 	:param print_map: A boolean corresponding to whether or not to print the game level after taking the step
 	:returns: A tuple of lists (states, actions, rewards), where each list has length equal to the number of timesteps in the episode
 	"""
-	epsilon = 0.5 #0.01
+	epsilon = 0.3
 	gamma = 0.99
 	states = []
 	actions = []
@@ -127,14 +123,7 @@ def generate_trajectory(env, model, print_map=False):
 
 		next_Qs = model.q_values(state)
 		target_qs = Qs.numpy()
-		#import ipdb; ipdb.set_trace()
-		#target_qs[action] =  rwd + np.max(next_Qs)
-		#target_qs[0][action] =  rwd + gamma*np.max(next_Qs)
-		target_qs[action] =  rwd + gamma*np.max(next_Qs)
-
-		#amax = np.argmax(next_Qs, axis=1)
-		#new_Qs = tf.gather_nd(next_Qs, list(zip(np.arange(next_Qs.shape[0]), amax)))
-		#target_qs = np.array(rewards) + np.logical_not(done).astype(np.float32)*gamma*new_Qs
+		target_qs[0][action] =  rwd + gamma*np.max(next_Qs)
 
 		if print_map:
 			env.print_map()
@@ -169,13 +158,9 @@ def train(env, model, previous_actions, old_probs):
 	with tf.GradientTape(persistent=True) as tape:
 		gamma = 0.99
 		states, actions, rewards, q_values, target_qs = generate_trajectory(env, model)
-		#Q = tf.Variable(q_values)
 		loss = model.loss(q_values, target_qs)
 	gradients = tape.gradient(target = loss, sources = model.trainable_variables)
-	#gradients = tape.gradient(target=loss, sources=Q)
-	#import ipdb; ipdb.set_trace()
 	model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-	#model.optimizer.apply_gradients(zip([gradients], [Q]))
 	
 	return tf.reduce_sum(rewards), len(rewards), old_probs, actions, loss
 
@@ -185,7 +170,7 @@ def main():
 	use_submap = False
 	use_enemy = False
 	allow_attacking = False
-	num_epochs = 100
+	num_epochs = 1000
 
 	# Initialize the game level
 	env = gl.GameLevel(game_level, use_enemy, use_submap)
