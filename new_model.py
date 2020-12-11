@@ -23,8 +23,8 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.state_size = state_size
         
         self.actor_discount = 1.0
-        self.critic_discount = 0.9
-        self.learning_rate = 1e-5
+        self.critic_discount = 1.0 #0.9
+        self.learning_rate = 1e-4
 
         # Define actor network parameters, critic network parameters, and optimizer
         self.hidden_size = 64
@@ -32,7 +32,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.input_layer = tf.keras.layers.Input(shape=(state_size,))
 
         self.actor1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        #self.actor2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.actor2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
         self.actor3 = tf.keras.layers.Dense(self.num_actions, activation='softmax')
 
         self.critic1 = tf.keras.layers.Dense(self.critic_hidden_size, activation='relu')
@@ -53,8 +53,8 @@ class ReinforceWithBaseline(tf.keras.Model):
         """
         # TODO: implement this!
         dense_layer1 = self.actor1(states)
-        #dense_layer2 = self.actor2(dense_layer1)
-        probabilities = self.actor3(dense_layer1)
+        dense_layer2 = self.actor2(dense_layer1)
+        probabilities = self.actor3(dense_layer2)
 
         return probabilities
 
@@ -97,14 +97,14 @@ class ReinforceWithBaseline(tf.keras.Model):
         advantage = discounted_rewards - tf.squeeze(self.value_function(states))
         probs = self.call(states)
 
-        actor_log = -1 * tf.math.log(tf.gather_nd(probs, list(zip(np.arange(len(actions)), actions))))
+        actor_log = tf.math.log(tf.gather_nd(probs, list(zip(np.arange(len(actions)), actions))))
         actor_loss = tf.stop_gradient(advantage) * actor_log
         actor_loss = self.actor_discount * actor_loss
 
-        critic_loss = advantage * advantage
+        critic_loss = tf.square(advantage) #advantage * advantage
         critic_loss = self.critic_discount * critic_loss
 
-        loss = tf.reduce_sum(tf.reshape(actor_loss + critic_loss, (-1, 1)))
+        loss = tf.reduce_sum(critic_loss) - tf.reduce_sum(actor_loss) #tf.reduce_sum(tf.reshape(actor_loss + critic_loss, (-1, 1)))
 
         return loss
 
