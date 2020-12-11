@@ -13,7 +13,7 @@ class PPOModel(tf.keras.Model):
         self.num_actions = num_actions
 
         self.epsilon = 0.2
-        self.learning_rate = 2.5e-4
+        self.learning_rate = 4e-4
         self.GAMMA = 0.99
         self.LAMBDA = 0.95
         self.critic_discount = 0.4
