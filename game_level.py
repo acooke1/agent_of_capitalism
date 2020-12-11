@@ -134,7 +134,7 @@ class GameLevel():
         # Reward values
         # TODO tweak these values
         self.empty_space_reward = 0 # NOTE: CURRENTLY NOT IN USE--SEE LINE 162 FOR HOW REWARD FOR EMPTY SPACES IS CALCULATED
-        self.hit_wall_reward = -.2
+        self.hit_wall_reward = -.1
         self.get_coin_reward = 1.0
         self.get_all_coins_reward = 0.0
         self.slay_enemy_reward = 0.5
