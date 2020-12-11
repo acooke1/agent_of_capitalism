@@ -51,7 +51,6 @@ class ReinforceWithBaseline(tf.keras.Model):
         :return: A [episode_length,num_actions] matrix representing the probability distribution over actions
         for each state in the episode
         """
-        # TODO: implement this!
         dense_layer1 = self.actor1(states)
         dense_layer2 = self.actor2(dense_layer1)
         probabilities = self.actor3(dense_layer2)
@@ -67,7 +66,6 @@ class ReinforceWithBaseline(tf.keras.Model):
         of an episode.
         :return: A [episode_length] matrix representing the value of each state.
         """
-        # TODO: implement this :D
         dense_layer1 = self.critic1(states)
         values = self.critic2(dense_layer1)
 
@@ -92,8 +90,6 @@ class ReinforceWithBaseline(tf.keras.Model):
         :param discounted_rewards: Discounted rewards throughout a complete episode (represented as an [episode_length] array)
         :return: loss, a TensorFlow scalar
         """
-        # TODO: implement this :)
-        # Hint: use tf.gather_nd (https://www.tensorflow.org/api_docs/python/tf/gather_nd) to get the probabilities of the actions taken by the model
         advantage = discounted_rewards - tf.squeeze(self.value_function(states))
         probs = self.call(states)
 
