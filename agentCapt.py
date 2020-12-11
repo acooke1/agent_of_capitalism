@@ -127,7 +127,7 @@ def main():
     use_submap = True
     use_enemy = False
     allow_attacking = False
-    num_epochs = 300
+    num_epochs = 500
 
     # PARAMETERS FOR RANDOM MAP GENERATION
     use_random_maps = False # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
