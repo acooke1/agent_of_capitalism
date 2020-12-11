@@ -42,9 +42,9 @@ levels = [
     [
         [-.1, -.1, -.1, -.1, -.1, -.1, -.1, -.1],
         [-.1, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, -.1],
-        [-.1, 0.0, 0.0, -.1, -.1, -.1, 0.0, -.1],
-        [-.1, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, -.1],
-        [-.1, 0.0, -.1, 1.0, -.1, 0.0, 0.0, -.1],
+        [-.1, 0.0, -.1, -.1, -.1, -.1, 0.0, -.1],
+        [-.1, 1.0, 0.0, 0.0, -.1, 1.0, 0.0, -.1],
+        [-.1, 0.0, -.1, 1.0, -.1, 0.0, -.1, -.1],
         [-.1, 0.0, -.1, 0.0, -.1, 0.0, 1.0, -.1],
         [-.1, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -.1],
         [-.1, -.1, -.1, -.1, -.1, -.1, -.1, -.1]
@@ -134,15 +134,16 @@ class GameLevel():
         # Reward values
         # TODO tweak these values
         self.empty_space_reward = 0 # NOTE: CURRENTLY NOT IN USE--SEE LINE 162 FOR HOW REWARD FOR EMPTY SPACES IS CALCULATED
-        self.hit_wall_reward = -0.1
-        self.get_coin_reward = 0.5
-        self.get_all_coins_reward = 0.0
+        self.hit_wall_reward = -.2
+        self.get_coin_reward = 1.0
+        self.get_all_coins_reward = 10
         self.slay_enemy_reward = 0.5
-        self.get_hit_by_enemy_reward = -10.0
+        self.get_hit_by_enemy_reward = -1.0
         
     
     def setMapSeed(self):
-        self.seeded_map = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos)[0]
+        self.seeded_map, num_generations, self.starting_pos, temp_enemy_pos = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos, self.use_random_starts)
+        # note: num_generations and temp_enemy_pos get garbage collected
         self.seeded_coins_left = copy.deepcopy(self.num_coins)
 
 
@@ -156,7 +157,8 @@ class GameLevel():
                 self.level_map = copy.deepcopy(levels[self.level_num])
                 self.num_coins_left = copy.deepcopy(level_num_coins[self.level_num])
         else:
-            self.level_map = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos)[0]
+            self.level_map, num_generations, self.starting_pos, temp_enemy_pos = self.procedurally_generate(self.side_length, self.wall_prop, self.num_coins, self.starting_pos, self.use_random_starts)
+            # gen_map, num_generations, player_start_pos, enemy_start_pos
             self.num_coins_left = copy.deepcopy(self.num_coins)
 
         # Reset step num and player position to starting position
@@ -234,7 +236,7 @@ class GameLevel():
             if goal_pos_contents == self.enemy_level_val: # running into the enemy
                 reward = self.get_hit_by_enemy_reward
                 done = True
-                #print("END CONDITION: hit by enemy")
+                print("END CONDITION: hit by enemy")
 
             # Update player position
             self.level_map[self.player_pos[0]][self.player_pos[1]] = 0 # remove the player from the previous space in the map
@@ -297,7 +299,7 @@ class GameLevel():
             if enemy_goal_pos_contents == self.player_level_val: # hitting the player
                 reward = self.get_hit_by_enemy_reward
                 done = True
-                #print("END CONDITION: hit by enemy")
+                print("END CONDITION: hit by enemy")
             
             # Update enemy position
             # Remove the enemy from the previous space in the map
@@ -409,6 +411,7 @@ class GameLevel():
 
         if search_item==self.coin_level_val:
             print("ERROR IN num_steps_to_item function: the next coin is not accessible.")
+            self.print_map()
 
         return -1
 
@@ -582,12 +585,12 @@ class GameLevel():
 
 
 # = = = = TEST CODE = = = =
-
+"""
 def main():
 
     # PARAMETERS FOR THIS TRAINING RUN
-    game_level = 3
-    use_submap = True
+    game_level = 0
+    use_submap = False
     use_enemy = True
 
     # PARAMETERS FOR RANDOM MAP GENERATION
@@ -603,20 +606,21 @@ def main():
     # level.print_map()
 
     # TEST PARAMETERS FOR MASS GENERATION
-    """
+    
     side_length = 16
     num_coins = 12
     wall_prop = 0.3
     num_generations = []
     for i in range(100):
-        genned_map, num_gens, player_pos, enemy_pos = level.procedurally_generate(side_length=side_length, wall_prop=wall_prop, num_coins=num_coins, use_random_starts=True)
+        genned_map, num_gens, player_pos, enemy_pos = level.procedurally_generate(side_length=side_length, wall_prop=wall_prop, num_coins=num_coins, random_starting_pos=True)
         num_generations.append(num_gens)
     print("Side length " + str(side_length) + "; wall prop " + str(wall_prop) + "; num coins " + str(num_coins) + ": " + str(sum(num_generations)/len(num_generations)) + " maps need to be generated on average")
-    """
+    
 
     # COMMENT OUT ABOVE CODE TO GET THE TEST MOVEMENTS IN THE MAP
     
-    test_steps = [2, 2, 2, 2, 2, 2, 2, 3, 3, 0, 3, 3, 3]
+    test_steps = [2, 2, 2, 0, 3, 3, 0, 0, 2, 3]
+    # for level 3: [2, 2, 2, 2, 2, 2, 2, 3, 3, 0, 3, 3, 3]
     # A good set of test_steps for level 0: [2, 2, 2, 0, 3, 3, 0, 0, 2, 3]
 
     # Print initial board state...
@@ -633,6 +637,8 @@ def main():
         else:
             level.print_map()
     
+    
 
 if __name__ == '__main__':
     main()
+"""
