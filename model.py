@@ -24,9 +24,6 @@ class Reinforce(tf.keras.Model):
         self.dense1 = tf.keras.layers.Dense(self.state_size, activation='relu')
         self.dense2 = tf.keras.layers.Dense(self.state_size, activation='relu')
         self.dense3 = tf.keras.layers.Dense(num_actions, activation='softmax')
-
-
-        # TODO: Define actor network parameters, critic network parameters, and optimizer
         pass
 
     def call(self, states):
@@ -40,7 +37,6 @@ class Reinforce(tf.keras.Model):
         :return: A [episode_length,num_actions] matrix representing the probability distribution over actions
         for each state in the episode
         """
-        # TODO: implement this!
         output = self.dense1(states)
         output = self.dense2(output)
         output = self.dense3(output)
@@ -75,8 +71,6 @@ class Reinforce(tf.keras.Model):
         loss_actor = -tf.reduce_sum(log_prob_actions * discounted_rewards)
         
         #tf.stop_gradient(self.value_function(states))
-        # TODO: implement this :)
-        # Hint: use tf.gather_nd (https://www.tensorflow.org/api_docs/python/tf/gather_nd) to get the probabilities of the actions taken by the model
         
         return loss_actor
 
