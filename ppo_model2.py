@@ -20,24 +20,22 @@ class PPOModel(tf.keras.Model):
         super(PPOModel, self).__init__()
         self.num_actions = num_actions
 
-        self.epsilon = 0.1
-        self.learning_rate = 2.5e-3
+        self.epsilon = 0.2
+        self.learning_rate = 2.5e-8
         self.GAMMA = 0.99
         self.LAMBDA = 0.95
         self.critic_discount = 0.4
-        self.actor_discount = 0.9
-        self.entropy_beta = 0.01
+        self.actor_discount = 1.0
+        self.entropy_beta = 0.001
         self.non_zero = 1e-10
         self.eAdam = 1e-4
 
-        self.mini_batch_size = 32
-        self.ppo_epochs = 20
+        self.mini_batch_size = 16
+        self.ppo_epochs = 10
 
-        self.optimizer = tf.optimizers.Adam(self.learning_rate, epsilon=self.eAdam)
-        self.hidden_size = 50
+        self.optimizer = tf.optimizers.Adam(self.learning_rate)
+        self.hidden_size = 32
         self.state_size = state_size
-
-        self.state_input = tf.keras.layers.Input(shape=self.num_actions)
 
         #ACTOR MODEL LAYERS
 
@@ -83,14 +81,14 @@ class PPOModel(tf.keras.Model):
                     old_policy_probs = tf.stop_gradient(old_policy_probs)
                     new_policy_log = -1 * tf.math.log(tf.gather_nd(new_policy_probs, list(zip(np.arange(len(action)), action))))
                     old_policy_log = -1 * tf.math.log(tf.gather_nd(old_policy_probs, list(zip(np.arange(len(action)), action))))
-                    #ratio = tf.math.exp(tf.math.subtract(tf.math.log(new_policy_probs + 1e-10), tf.math.log(old_policy_probs + 1e-10)))
-                    ratio = tf.math.exp(old_policy_log - new_policy_log)
+                    ratio = tf.math.exp(tf.math.subtract(tf.math.log(new_policy_probs + 1e-10), tf.math.log(old_policy_probs + 1e-10)))
+                    #ratio = tf.math.exp(old_policy_log - new_policy_log)
                     p1 = ratio * advantage
                     p2 = tf.clip_by_value(ratio, 1 - self.epsilon, 1 + self.epsilon) * advantage
                     actor_loss = -tf.reduce_mean(tf.minimum(p1, p2))
                     critic_loss = tf.reduce_mean(tf.math.squared_difference(reward, values))
-                    #e = -tf.reduce_sum(new_policy_probs * tf.math.log(tf.clip_by_value(new_policy_probs, self.non_zero, 1)), axis=1)
-                    e = -tf.reduce_sum(new_policy_probs * tf.math.log(new_policy_probs), axis=1)
+                    e = -tf.reduce_sum(new_policy_probs * tf.math.log(tf.clip_by_value(new_policy_probs, self.non_zero, 1)), axis=1)
+                    #e = -tf.reduce_sum(new_policy_probs * tf.math.log(new_policy_probs), axis=1)
                     entropy = tf.reduce_mean(e, axis=0)
                     #entropy = tf.reduce_mean(-(new_policy_probs * tf.math.log(new_policy_probs + 1e-10)))
                     loss = self.critic_discount * critic_loss + self.actor_discount * actor_loss - self.entropy_beta * entropy
@@ -98,8 +96,36 @@ class PPOModel(tf.keras.Model):
                 gradients = tape.gradient(target = loss, sources = self.trainable_variables)
                 self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
                 episode_loss.append(loss)
-        return np.mean(episode_loss)
+        return tf.reduce_mean(episode_loss)
 
+
+    def ppo_loss(self, states, actions, rewards, actions_probs, returns, advantages, log_probs, actions_onehot):
+        episode_loss = []
+        for _ in range(self.ppo_epochs):
+            with tf.GradientTape() as tape:
+                values = self.value_function(states)
+                old_policy_probs = actions_probs
+                new_policy_probs = self.call(states)
+                old_policy_probs = tf.stop_gradient(old_policy_probs)
+                new_policy_log = -1 * tf.math.log(tf.gather_nd(new_policy_probs, list(zip(np.arange(len(actions)), actions))))
+                old_policy_log = -1 * tf.math.log(tf.gather_nd(old_policy_probs, list(zip(np.arange(len(actions)), actions))))
+                ratio = tf.math.exp(tf.math.subtract(tf.math.log(new_policy_probs + 1e-10), tf.math.log(old_policy_probs + 1e-10)))
+                #ratio = tf.math.exp(old_policy_log - new_policy_log)
+                p1 = ratio * advantages
+                p2 = tf.clip_by_value(ratio, 1 - self.epsilon, 1 + self.epsilon) * advantages
+                actor_loss = -tf.reduce_mean(tf.minimum(p1, p2))
+                critic_loss = tf.reduce_mean(tf.math.squared_difference(rewards, values))
+                e = -tf.reduce_sum(new_policy_probs * tf.math.log(tf.clip_by_value(new_policy_probs, self.non_zero, 1)), axis=1)
+                #e = -tf.reduce_sum(new_policy_probs * tf.math.log(new_policy_probs), axis=1)
+                entropy = tf.reduce_mean(e, axis=0)
+                #entropy = tf.reduce_mean(-(new_policy_probs * tf.math.log(new_policy_probs + 1e-10)))
+                loss = self.critic_discount * critic_loss + self.actor_discount * actor_loss - self.entropy_beta * entropy
+                #loss = - (actor_loss - self.constant_2 * critic_loss + self.constant_1 * entropy)
+            gradients = tape.gradient(target = loss, sources = self.trainable_variables)
+            self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+            episode_loss.append(loss)
+            
+        return tf.reduce_mean(episode_loss)
 
 #        values = self.value_function(states)
 #        newpolicy_probs = self.call(states)

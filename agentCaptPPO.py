@@ -6,8 +6,18 @@ import tensorflow as tf
 from model import Reinforce
 from new_model import ReinforceWithBaseline
 from ppo_model2 import PPOModel
+import matplotlib.pyplot as plt
+from IPython.display import clear_output
 import game_level as gl
 import glob
+
+def plot_(frames, rewards):
+    clear_output(True)
+    plt.figure(figsize=(20,5))
+    plt.subplot(131)
+    plt.title('frame %s. reward: %s' % (frames, rewards[-1]))
+    plt.plot(rewards)
+    plt.show()
 
 def get_gaes(values, masks, rewards, lmbda=0.95, gamma=0.99):
     returns = []
@@ -19,7 +29,8 @@ def get_gaes(values, masks, rewards, lmbda=0.95, gamma=0.99):
         returns.insert(0, gae + values[i])
 
     adv = np.array(returns) - values[:-1]
-    return returns, (adv - np.mean(adv)) / (np.std(adv) + 1e-10)
+    return returns, adv
+    #return returns, (adv - np.mean(adv)) / (np.std(adv) + 1e-10)
 
 def visualize_data(total_rewards):
     """
@@ -123,6 +134,8 @@ def train(env, model):
 
     # Uses generate trajectory to run an episode and get states, actions, and rewards.
     states, actions, rewards, values, actions_probs, actions_onehot, masks, log_probs = generate_trajectory(env, model)
+
+    #discounted_rewards = np.reshape(discount(rewards), (-1, 1))
     returns, advantages = get_gaes(values, masks, rewards)
 
     returns   = tf.stop_gradient(tf.concat(returns, axis=0)).numpy()
@@ -130,17 +143,18 @@ def train(env, model):
     actions_probs = tf.stop_gradient(tf.concat(actions_probs, axis=0)).numpy()
     actions_onehot = tf.stack(actions_onehot).numpy()
     actions   = tf.stack(actions, axis=0).numpy()
-    advantages = np.reshape(advantages, (-1, 1))
-    rewards = np.reshape(rewards, (-1, 1))
 
-    #discounted_rewards = discount(rewards)
-    episode_loss = model.loss(np.asarray(states), actions, rewards, actions_probs, returns, advantages, log_probs, actions_onehot)
+    with tf.GradientTape() as tape:
+        advantages = np.reshape(advantages, (-1, 1))
+        rewards = np.reshape(rewards, (-1, 1))
+
+        episode_loss = model.ppo_loss(np.asarray(states), actions, rewards, actions_probs, returns, advantages, log_probs, actions_onehot)
     #gradients = tape.gradient(target = episode_loss, sources = model.trainable_variables)
     #model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     
     return tf.reduce_sum(rewards), len(rewards), episode_loss
 
-def test_env(env, model, print_map=False):
+def test_env(env, model, print_map=False, use_random_map=True):
     env.reset_level()
     state = env.reset()
 
@@ -170,17 +184,18 @@ def test_env(env, model, print_map=False):
 
 def main():
     # PARAMETERS FOR THIS TRAINING RUN
-    game_level = 0
+    game_level = 1
     use_submap = False
-    use_enemy = False
+    use_enemy = True
     allow_attacking = False
-    frames = 150
+    frames = 300
 
     # PARAMETERS FOR RANDOM MAP GENERATION
     use_random_maps = False
-    side_length = 16 # Generally, values between 8 and 16 are good
+    test_random_maps = False
+    side_length = 8 # Generally, values between 8 and 16 are good
     wall_prop = 0.3 # This is the fraction of empty spaces that become walls. Generally, values between 0.25 and 0.35 are good
-    num_coins = 12
+    num_coins = 7
     starting_pos = [1,1] # Setting this to [1,1] is standard (top-left corner), but if you wanted, you could set it to [4,5], or other starting positions
 
     # Initialize the game level
@@ -201,34 +216,41 @@ def main():
     # Initialize model
     model = PPOModel(state_size, num_actions)
 
-    # model = ReinforceWithBaseline(state_size, num_actions)
-
     rewards = []
     test_rewards = []
     frames_ = []
+    steps_required = []
     
     # Train for num_epochs epochs
     for i in range(frames):
         episode_rewards, episode_length, episode_loss = train(env, model)
         if (i % 10 == 0):
             test_reward = 0
+            avg_steps_needed = 0
             cntr = 0
-            for _ in range(10):
-                t, a = test_env(env, model)
+            for _ in range(20):
+                test_env_ = env
+                if (test_random_maps):
+                    test_env_ = gl.GameLevel(game_level, use_enemy, use_submap, test_random_maps, side_length, wall_prop, num_coins, starting_pos)
+                t, a = test_env(test_env_, model, print_map=False)
                 test_reward += t
+                avg_steps_needed += a
                 cntr += 1
+            avg_steps_needed = avg_steps_needed/cntr
             test_reward = test_reward/cntr
             test_rewards.append(test_reward)
+            steps_required.append(avg_steps_needed)
             frames_.append(i)
             print('Episode: ' + str(i) +', episode length: ', episode_length, ', episode rewards: ', episode_rewards.numpy(), ', episode loss: ', episode_loss)
         rewards.append(np.sum(episode_rewards))
         # print('total episode rewards', episode_rewards)
     
     # Run the model once, printing its movements this time
-    generate_trajectory(env, model, print_map=False)
+    generate_trajectory(env, model, print_map=True)
     #print(np.mean(np.asarray(rewards[50:])))
     visualize_data(rewards)
-    plot(frames_, test_rewards)
+    plot_(frames_, test_rewards)
+    plot_(frames_, steps_required)
 
 
 if __name__ == '__main__':

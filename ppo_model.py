@@ -6,32 +6,23 @@ import copy
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-def get_gaes(rewards, state_values, next_state_values, GAMMA=0.99, LAMBDA=0.95):
-    deltas = [r_t + GAMMA * next_v - v for r_t, next_v, v in zip(rewards, next_state_values, state_values)]
-    gaes = copy.deepcopy(deltas)
-    for t in reversed(range(len(gaes) - 1)):
-        gaes[t] = gaes[t] + LAMBDA * GAMMA * gaes[t + 1]
-    return gaes, deltas
-
 class PPOModel(tf.keras.Model):
     def __init__(self, state_size, num_actions):
         
         super(PPOModel, self).__init__()
         self.num_actions = num_actions
 
-        self.epsilon = 0.2
-        self.learning_rate = 2e-4
+        self.epsilon = 0.1
+        self.learning_rate = 2.5e-5
         self.GAMMA = 0.99
         self.LAMBDA = 0.95
-        self.critic_discount = 0.5
+        self.critic_discount = 0.4
         self.actor_discount = 1.0
         self.entropy_beta = 0.001
         self.non_zero = 1e-10
 
         self.optimizer = tf.optimizers.Adam(self.learning_rate)
         self.hidden_size = 50
-        self.hidden_size_first = 512
-        self.hidden_size_second = 256
         self.state_size = state_size
 
         self.state_input = tf.keras.layers.Input(shape=self.num_actions)
@@ -68,30 +59,15 @@ class PPOModel(tf.keras.Model):
 
         return output
 
-    def loss(self, states, actions, discounted_rewards, previous_actions, oldpolicy_probs):
+    def loss(self, states, actions, discounted_rewards, previous_actions, oldpolicy_probs, gaes):
 
         values = self.value_function(states)
+        oldpolicy_probs = tf.cast(oldpolicy_probs, dtype=tf.float32)
         newpolicy_probs = self.call(states)
-        zero = np.zeros((1,1))
-        next_state_values = np.append(values.numpy(), zero, axis=0)
-        advantages, deltas = get_gaes(discounted_rewards, values, next_state_values)
 
-        shape_dif = newpolicy_probs.shape[0] - oldpolicy_probs.shape[0]
-        correction = np.zeros((abs(shape_dif), self.num_actions))
-        newpolicy_probs_fixed = newpolicy_probs
-        oldpolicy_probs_fixed = oldpolicy_probs
-        if (shape_dif < 0):
-            newpolicy_probs_fixed = tf.concat([newpolicy_probs_fixed, correction], axis=0)
-        elif (shape_dif > 0):
-            oldpolicy_probs_fixed = tf.concat([oldpolicy_probs_fixed, correction], axis=0)
-        
-        shape_dif = newpolicy_probs_fixed.shape[0] - len(advantages)
-        for i in range(shape_dif):
-            advantages.append([0])
-        
-        ratio = tf.math.exp(tf.math.log(newpolicy_probs_fixed + 1e-10) - tf.math.log(oldpolicy_probs_fixed + 1e-10))
-        p1 = ratio * advantages
-        p2 = tf.clip_by_value(ratio, 1 - self.epsilon, 1 + self.epsilon) * advantages
+        ratio = tf.math.exp(tf.subtract(tf.math.log(newpolicy_probs + 1e-10), tf.math.log(oldpolicy_probs + 1e-10)))
+        p1 = ratio * gaes
+        p2 = tf.clip_by_value(ratio, 1 - self.epsilon, 1 + self.epsilon) * gaes
         actor_loss = -tf.reduce_mean(tf.minimum(p1, p2))
         critic_loss = tf.reduce_mean(tf.math.squared_difference(discounted_rewards, values))
         e = -tf.reduce_sum(newpolicy_probs * tf.math.log(tf.clip_by_value(newpolicy_probs, self.non_zero, 1)), axis=1)
@@ -100,7 +76,7 @@ class PPOModel(tf.keras.Model):
         loss = self.critic_discount * critic_loss + self.actor_discount * actor_loss - self.entropy_beta * entropy
         #loss = - (actor_loss - self.constant_2 * critic_loss + self.constant_1 * entropy)
     
-        return loss, newpolicy_probs_fixed
+        return loss, newpolicy_probs
 
         
         # values = self.value_function(states)

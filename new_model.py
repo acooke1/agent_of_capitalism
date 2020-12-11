@@ -24,19 +24,21 @@ class ReinforceWithBaseline(tf.keras.Model):
         
         self.actor_discount = 1.0
         self.critic_discount = 1.0
+        self.learning_rate = 1e-5
 
         # Define actor network parameters, critic network parameters, and optimizer
         self.hidden_size = 64
         self.critic_hidden_size = 32
         self.input_layer = tf.keras.layers.Input(shape=(state_size,))
 
-        self.act_dense_layer1 = tf.keras.layers.Dense(self.hidden_size, use_bias=True) 
-        self.act_dense_layer2 = tf.keras.layers.Dense(self.num_actions, use_bias=True)
+        self.actor1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.actor2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.actor3 = tf.keras.layers.Dense(self.num_actions, activation='softmax')
 
-        self.critic_dense_layer1 = tf.keras.layers.Dense(self.critic_hidden_size, use_bias=True) 
-        self.critic_dense_layer2 = tf.keras.layers.Dense(1, use_bias=True) 
+        self.critic1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.critic2 = tf.keras.layers.Dense(1) 
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.00001) # TODO tweak this!
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate) # TODO tweak this!
 
     def call(self, states):
         """
@@ -50,12 +52,11 @@ class ReinforceWithBaseline(tf.keras.Model):
         for each state in the episode
         """
         # TODO: implement this!
-        dense_layer1 = self.act_dense_layer1(states)
-        dense_layer1 = tf.nn.relu(dense_layer1)
-        dense_layer2 = self.act_dense_layer2(dense_layer1)
-        probabilites = tf.nn.softmax(dense_layer2)
+        dense_layer1 = self.actor1(states)
+        dense_layer2 = self.actor2(dense_layer1)
+        probabilities = self.actor3(dense_layer2)
 
-        return probabilites
+        return probabilities
 
     def value_function(self, states):
         """
@@ -67,9 +68,8 @@ class ReinforceWithBaseline(tf.keras.Model):
         :return: A [episode_length] matrix representing the value of each state.
         """
         # TODO: implement this :D
-        dense_layer1 = self.critic_dense_layer1(states)
-        dense_layer1 = tf.nn.relu(dense_layer1)
-        values = self.critic_dense_layer2(dense_layer1)
+        dense_layer1 = self.critic1(states)
+        values = self.critic2(dense_layer1)
 
         return values
 
