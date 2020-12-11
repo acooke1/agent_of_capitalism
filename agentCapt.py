@@ -123,11 +123,11 @@ def train(env, model, model_type):
 
 def main():
     # PARAMETERS FOR THIS TRAINING RUN
-    game_level = 2
+    game_level = 0
     use_submap = True
     use_enemy = False
     allow_attacking = False
-    num_epochs = 500
+    num_epochs = 2300
 
     # PARAMETERS FOR RANDOM MAP GENERATION
     use_random_maps = False # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
