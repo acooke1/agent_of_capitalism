@@ -23,7 +23,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.state_size = state_size
         
         self.actor_discount = 1.0
-        self.critic_discount = 1.0
+        self.critic_discount = 0.9
         self.learning_rate = 1e-5
 
         # Define actor network parameters, critic network parameters, and optimizer
@@ -32,10 +32,10 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.input_layer = tf.keras.layers.Input(shape=(state_size,))
 
         self.actor1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.actor2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        #self.actor2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
         self.actor3 = tf.keras.layers.Dense(self.num_actions, activation='softmax')
 
-        self.critic1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.critic1 = tf.keras.layers.Dense(self.critic_hidden_size, activation='relu')
         self.critic2 = tf.keras.layers.Dense(1) 
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate) # TODO tweak this!
@@ -53,8 +53,8 @@ class ReinforceWithBaseline(tf.keras.Model):
         """
         # TODO: implement this!
         dense_layer1 = self.actor1(states)
-        dense_layer2 = self.actor2(dense_layer1)
-        probabilities = self.actor3(dense_layer2)
+        #dense_layer2 = self.actor2(dense_layer1)
+        probabilities = self.actor3(dense_layer1)
 
         return probabilities
 
@@ -106,5 +106,5 @@ class ReinforceWithBaseline(tf.keras.Model):
 
         loss = tf.reduce_sum(tf.reshape(actor_loss + critic_loss, (-1, 1)))
 
-        return loss, probs
+        return loss
 

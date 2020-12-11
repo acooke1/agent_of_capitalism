@@ -78,6 +78,6 @@ class Reinforce(tf.keras.Model):
         # TODO: implement this :)
         # Hint: use tf.gather_nd (https://www.tensorflow.org/api_docs/python/tf/gather_nd) to get the probabilities of the actions taken by the model
         
-        return loss_actor, probs
+        return loss_actor
 
 

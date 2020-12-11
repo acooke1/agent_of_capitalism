@@ -9,19 +9,6 @@ from ppo_model import PPOModel
 import game_level as gl
 import glob
 
-
-def get_gaes(values, masks, rewards, lmbda=0.95, gamma=0.99):
-    returns = []
-    gae = 0
-    for i in reversed(range(len(rewards))):
-        #print(rewards[i], " ", gamma, " ", values[i+1], " ", masks[i], " ", values[i])
-        delta = rewards[i] + gamma * values[i + 1] * masks[i] - values[i]
-        gae = delta + gamma * lmbda * masks[i] * gae
-        returns.insert(0, gae + values[i])
-
-    adv = np.array(returns) - values[:-1]
-    return returns, adv
-
 def visualize_data(total_rewards):
     """
     HELPER FUNCTION
@@ -70,11 +57,8 @@ def generate_trajectory(env, model, print_map=False, calc_value=False):
     states = []
     actions = []
     rewards = []
-    values = []
     old_probs = []
     masks = []
-    returns = []
-    advantages = []
     state = env.reset()
     done = False
 
@@ -87,10 +71,6 @@ def generate_trajectory(env, model, print_map=False, calc_value=False):
         probs = model.call(tf.expand_dims(state, axis = 0))        
         probs = tf.cast(probs, tf.float64)
         old_probs.append(probs)
-
-        if (calc_value):
-            value = model.value_function(tf.expand_dims(state, axis = 0))
-            values.append(value)
 
         # Randomly samples from the distribution to determine the next action
         action = np.random.choice([0, 1, 2, 3], 1, True, p=probs[0]/tf.reduce_sum(probs[0]))[0]
@@ -110,18 +90,13 @@ def generate_trajectory(env, model, print_map=False, calc_value=False):
             print("Action taken: " + int_to_action[action])
             print("Reward: " + str(rwd))
             print()
-        
-    if (calc_value):
-        value = model.value_function(tf.expand_dims(state, axis = 0))
-        values.append(value)
-        returns, advantages = get_gaes(values, masks, rewards)
 
     old_probs = tf.stop_gradient(tf.concat(old_probs, axis=0)).numpy()
 
-    return states, actions, rewards, old_probs, returns, advantages
+    return states, actions, rewards, old_probs
 
 
-def train(env, model, previous_actions, model_type):
+def train(env, model, model_type):
     """
     This function trains the model for one episode.
 
@@ -131,19 +106,19 @@ def train(env, model, previous_actions, model_type):
     """
 
     # Uses generate trajectory to run an episode and get states, actions, and rewards.
-    states, actions, rewards, old_probs, returns, gaes = generate_trajectory(env, model, False, not(model_type == "REINFORCE"))
+    states, actions, rewards, old_probs = generate_trajectory(env, model, False, not(model_type == "REINFORCE"))
     with tf.GradientTape() as tape:
         discounted_rewards = discount(rewards)
         # Computes loss from the model and runs backpropagation
         if (model_type == "PPO"):
-            episode_loss, p = model.loss(np.asarray(states), actions, rewards, previous_actions, old_probs, gaes)
+            episode_loss = model.loss(np.asarray(states), actions, discounted_rewards, old_probs)
         else:
-            episode_loss, p = model.loss(np.asarray(states), actions, discounted_rewards)
+            episode_loss = model.loss(np.asarray(states), actions, discounted_rewards)
     gradients = tape.gradient(target = episode_loss, sources = model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     
     #print(rewards)
-    return tf.reduce_sum(rewards), len(rewards), old_probs, actions, episode_loss
+    return tf.reduce_sum(rewards), len(rewards), old_probs, episode_loss
 
 
 def main():
@@ -190,10 +165,9 @@ def main():
     # model = ReinforceWithBaseline(state_size, num_actions)
 
     rewards = []
-    previous_actions = []
     # Train for num_epochs epochs
     for i in range(num_epochs):
-        episode_rewards, episode_length, old_probs, previous_actions, episode_loss = train(env, model, previous_actions, sys.argv[1])
+        episode_rewards, episode_length, old_probs, episode_loss = train(env, model, sys.argv[1])
         print('Episode: ' + str(i) +', episode length: ', episode_length, ', episode rewards: ', episode_rewards.numpy(), ', episode loss: ', episode_loss.numpy())
         rewards.append(np.sum(episode_rewards))
         # print('total episode rewards', episode_rewards)

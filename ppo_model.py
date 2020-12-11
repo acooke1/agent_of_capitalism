@@ -16,7 +16,7 @@ class PPOModel(tf.keras.Model):
         self.learning_rate = 2.5e-5
         self.GAMMA = 0.99
         self.LAMBDA = 0.95
-        self.critic_discount = 0.4
+        self.critic_discount = 0.3
         self.actor_discount = 1.0
         self.entropy_beta = 0.001
         self.non_zero = 1e-10
@@ -59,15 +59,20 @@ class PPOModel(tf.keras.Model):
 
         return output
 
-    def loss(self, states, actions, discounted_rewards, previous_actions, oldpolicy_probs, gaes):
+    def loss(self, states, actions, discounted_rewards, oldpolicy_probs):
 
         values = self.value_function(states)
         oldpolicy_probs = tf.cast(oldpolicy_probs, dtype=tf.float32)
         newpolicy_probs = self.call(states)
 
-        ratio = tf.math.exp(tf.subtract(tf.math.log(newpolicy_probs + 1e-10), tf.math.log(oldpolicy_probs + 1e-10)))
-        p1 = ratio * gaes
-        p2 = tf.clip_by_value(ratio, 1 - self.epsilon, 1 + self.epsilon) * gaes
+        advantages = discounted_rewards - tf.squeeze(values)
+        new_policy_log = tf.math.log(tf.gather_nd(newpolicy_probs, list(zip(np.arange(len(actions)), actions))))
+        old_policy_log = tf.math.log(tf.gather_nd(oldpolicy_probs, list(zip(np.arange(len(actions)), actions))))
+                    
+        ratio = tf.math.exp(tf.subtract(new_policy_log, old_policy_log))
+        #ratio = tf.math.exp(tf.subtract(tf.math.log(newpolicy_probs + 1e-10), tf.math.log(oldpolicy_probs + 1e-10)))
+        p1 = ratio * advantages
+        p2 = tf.clip_by_value(ratio, 1 - self.epsilon, 1 + self.epsilon) * advantages
         actor_loss = -tf.reduce_mean(tf.minimum(p1, p2))
         critic_loss = tf.reduce_mean(tf.math.squared_difference(discounted_rewards, values))
         e = -tf.reduce_sum(newpolicy_probs * tf.math.log(tf.clip_by_value(newpolicy_probs, self.non_zero, 1)), axis=1)
@@ -76,7 +81,7 @@ class PPOModel(tf.keras.Model):
         loss = self.critic_discount * critic_loss + self.actor_discount * actor_loss - self.entropy_beta * entropy
         #loss = - (actor_loss - self.constant_2 * critic_loss + self.constant_1 * entropy)
     
-        return loss, newpolicy_probs
+        return loss
 
         
         # values = self.value_function(states)
