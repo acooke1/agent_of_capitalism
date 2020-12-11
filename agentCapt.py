@@ -123,14 +123,14 @@ def train(env, model, model_type):
 
 def main():
     # PARAMETERS FOR THIS TRAINING RUN
-    game_level = 0
+    game_level = 2
     use_submap = True
     use_enemy = False
     allow_attacking = False
-    num_epochs = 2300
+    num_epochs = 5000
 
     # PARAMETERS FOR RANDOM MAP GENERATION
-    use_random_maps = False # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
+    use_random_maps = True # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
     side_length = 8 # Generally, values between 8 and 16 are good
     wall_prop = 0.3 # This is the fraction of empty spaces that become walls. Generally, values between 0.25 and 0.35 are good
     num_coins = 8
