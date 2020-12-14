@@ -133,7 +133,7 @@ class GameLevel():
 
         # Reward values
         # TODO tweak these values
-        self.empty_space_reward = 0 # NOTE: CURRENTLY NOT IN USE--SEE LINE 162 FOR HOW REWARD FOR EMPTY SPACES IS CALCULATED
+        self.empty_space_reward = 0.0 # NOTE: CURRENTLY NOT IN USE--SEE LINE 162 FOR HOW REWARD FOR EMPTY SPACES IS CALCULATED
         self.hit_wall_reward = -.1
         self.get_coin_reward = 1.0
         self.get_all_coins_reward = 0.0
@@ -236,7 +236,7 @@ class GameLevel():
             if goal_pos_contents == self.enemy_level_val: # running into the enemy
                 reward = self.get_hit_by_enemy_reward
                 done = True
-                print("END CONDITION: hit by enemy")
+                #print("END CONDITION: hit by enemy")
 
             # Update player position
             self.level_map[self.player_pos[0]][self.player_pos[1]] = 0 # remove the player from the previous space in the map
@@ -299,7 +299,7 @@ class GameLevel():
             if enemy_goal_pos_contents == self.player_level_val: # hitting the player
                 reward = self.get_hit_by_enemy_reward
                 done = True
-                print("END CONDITION: hit by enemy")
+                #print("END CONDITION: hit by enemy")
             
             # Update enemy position
             # Remove the enemy from the previous space in the map

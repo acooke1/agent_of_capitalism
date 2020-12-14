@@ -125,9 +125,10 @@ def main():
     # PARAMETERS FOR THIS TRAINING RUN
     game_level = 0
     use_submap = True
-    use_enemy = False
+    use_enemy = True
     allow_attacking = False
-    num_epochs = 3000
+    test_on_random_env = False
+    num_epochs = 10000
 
     # PARAMETERS FOR RANDOM MAP GENERATION
     use_random_maps = False # NOTE: when use_random_maps is True, the enemy may not necessarily work unless use_random_starts is also True
@@ -173,7 +174,10 @@ def main():
         # print('total episode rewards', episode_rewards)
     
     # Run the model once, printing its movements this time
-    generate_trajectory(env, model, print_map=True)
+    test_env = env
+    if (test_on_random_env):
+        test_env = gl.GameLevel(game_level, use_enemy, use_submap, True, side_length, wall_prop, num_coins, starting_pos, use_random_starts)
+    generate_trajectory(test_env, model, print_map=True)
     #print(np.mean(np.asarray(rewards[50:])))
     visualize_data(rewards)
 
