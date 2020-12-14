@@ -217,8 +217,12 @@ class GameLevel():
             # Move validation: also determines reward in this step
             if goal_pos_contents == self.empty_level_val: # moving into an empty space
                 # TODO tried swapping for the numsteps-based reward!
-                old_pos_reward = self.get_coin_reward / self.num_steps_to_item(self.coin_level_val, self.player_pos)
-                new_pos_reward = self.get_coin_reward / self.num_steps_to_item(self.coin_level_val, goal_pos)
+                if not (self.num_coins_left==1 and self.enemy_over_coin):
+                    old_pos_reward = self.get_coin_reward / self.num_steps_to_item(self.coin_level_val, self.player_pos)
+                    new_pos_reward = self.get_coin_reward / self.num_steps_to_item(self.coin_level_val, goal_pos)
+                else:
+                    old_pos_reward = self.get_coin_reward / self.num_steps_to_item(self.enemy_level_val, self.player_pos)
+                    new_pos_reward = self.get_coin_reward / self.num_steps_to_item(self.enemy_level_val, goal_pos)
                 # With this calculation, the highest new_pos_reward for an empty space is the value of getting a coin
                 # And if it was moving closer to the coin, then old_pos_reward should be half the value of getting the coin
                 reward = new_pos_reward-old_pos_reward
